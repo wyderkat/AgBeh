@@ -1,0 +1,11 @@
+I’ve got a peak finder that takes slices and locates peaks at an arbitrary number of rotations of the image, and makes a histogram of the radii of peaks from the center of the beamstop.
+
+With just simple peak finding on the histos, it does really well at finding the rings (except for the beamstop, which it thinks is offset because the smoothing algorithm lends that part of the image some symmetry that it does not actually have - since it’s more or less a square well in that region).
+
+If we do the 1st order derive of the slices, then we get good locations on the beamstop, since the slope of the square well is very large in magnitude. 
+
+So, for this my TODO is:
+
+    * use function fitting to the peaks (probably a gausian) to get better estimate of centers and widths
+    * refine the 1st order deriv portion that looks for the edges of the beamstop.
+    * think about how to find the center of the beamstop, given only an approximate center coordinate to start with.

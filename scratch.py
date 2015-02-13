@@ -219,7 +219,7 @@ clf()
 wl=25
 order=3
 row=im[rowCenter,:]
-col=rim[:,colCenter]
+col=im[:,colCenter]
 rowS=savitzky_golay(row,wl,order)
 # rickerWidths=np.array([10,15,30])
 rickerWidths=np.array([8])
@@ -265,8 +265,123 @@ array(min_peakind)-colCenter
  zero_crossings = numpy.where(numpy.diff(numpy.sign(a)))[0]
  zero_crossings
 
+# make histo of radii of peaks from center
+# let's assume we have a good center for now...
+
+from scipy import signal
+from smooth import *
+from saxsUtils import *
+import cv2
+
+# agbeh//latest_0001130_caz.tiff: (row,col,r) = (354,212,6.59242019653)
+# agbeh//latest_0001134_caz.tiff: (row,col,r) = (354,212,6.62872543335)
+# agbeh//latest_0001139_caz.tiff: (row,col,r) = (355,212,5.94810905457)
+# agbeh//latest_0001141_caz.tiff: (row,col,r) = (355,212,5.92114868164)
+
+# rowCenter=355 #xCenter
+rowCenter=354 #xCenter
+colCenter=212 #yCenter
+# im=retrieveImage('AgBehRingData_plus_some_more/latest_0001139_caz.tiff')
+im=retrieveImage('AgBehRingData_plus_some_more/latest_0001130_caz.tiff')
+figure(1)
+clf()
+imshow(im)
+rowCenter=355 #xCenter
+colCenter=212 #yCenter
+xCenter=rowCenter
+yCenter=colCenter
+hSize=310 # half of the tiff on the long dimension (rows)
+nSteps=30
+stepDeg=90./(nSteps+1)
+
+rows,cols = im.shape
+
+# rickerWidths=arange(1,30)#np.array([10])
+rickerWidths=np.array([8])
+wl=25
+order=3
+
+row=im[rowCenter,:]
+col=im[:,colCenter]
+
+rowS=savitzky_golay(row,wl,order)
+peakind = signal.find_peaks_cwt(rowS, rickerWidths,min_snr=1)
+
+figure(2)
+clf()
+plot(rowS,'b')
+plot(peakind, rowS[peakind],'r*')
+
+rH=[array(peakind)-colCenter]
+colS=savitzky_golay(col,wl,order)
+peakind = signal.find_peaks_cwt(colS, rickerWidths,min_snr=1)
+figure(3)
+clf()
+plot(colS,'b')
+plot(peakind, colS[peakind],'r*')
+
+rH.append(array(peakind)-rowCenter)
 
 
+
+# figure(1)
+# clf()
+# plot(row)
+# figure(2)
+# clf()
+# plot(col)
+
+for deg in arange(0,90,stepDeg):
+    if deg>0.0:
+        # print deg
+        M = cv2.getRotationMatrix2D((yCenter,rowCenter),deg,1)
+        rim=cv2.warpAffine(np.float32(im),M,(cols,rows))
+        row=rim[rowCenter,:]
+        col=rim[:,colCenter]
+
+        rowS=savitzky_golay(row,wl,order)
+        peakind = signal.find_peaks_cwt(rowS, rickerWidths,min_snr=1)
+        # figure(1)
+        # clf()
+        # plot(rowS,'b')
+        # plot(peakind, rowS[peakind],'r*')
+        # print array(peakind)-colCenter
+        rH.append(array(peakind)-colCenter)
+        colS=savitzky_golay(col,wl,order)
+        peakind = signal.find_peaks_cwt(colS, rickerWidths,min_snr=1)
+        # figure(2)
+        # clf()
+        # plot(colS,'b')
+        # plot(peakind, colS[peakind],'r*')
+        # print array(peakind)-rowCenter
+        rH.append(array(peakind)-rowCenter)
+
+rHisData=np.hstack(rH)
+rHisData=abs(rHisData)
+radHist=np.histogram(rHisData,bins=321,range=(0,321))
+
+figure(4)
+clf()
+wl=15
+order=3
+radHistS=savitzky_golay(radHist[0],wl,order)
+peakind = signal.find_peaks_cwt(radHistS, rickerWidths,min_snr=1)
+plot(radHist[1][0:321],radHistS,'0.5')
+plot(peakind, radHistS[peakind],'r*')
+
+# the image
+figure(1)
+clf()
+imshow(im)
+xPeaks=array(peakind)+colCenter
+# xPeaks=xPeaks[radHistS[peakind]>5]
+ringStars=ones_like(xPeaks)+rowCenter
+plot(xPeaks,ringStars,'r+')
+
+        # figure(1)
+        # plot(row)
+        # figure(2)
+        # plot(col)
 
 
 
