@@ -599,7 +599,7 @@ from scipy import signal
 from smooth import *
 from saxsUtils import *
 import cv2
-
+from npRootUtils import *
 # agbeh//latest_0001130_caz.tiff: (row,col,r) = (354,212,6.59242019653)
 # agbeh//latest_0001134_caz.tiff: (row,col,r) = (354,212,6.62872543335)
 # agbeh//latest_0001139_caz.tiff: (row,col,r) = (355,212,5.94810905457)
@@ -717,8 +717,9 @@ plot(xPeaks,ringStars,'r+')
 #  the point being that 1st order peak is oftem messed up, and we want 2nd to 8th or soself.
 
 
-# let's write a function:   input is good center, path to image, radius range to search for peaks.
-#                           output: peak spacing (pix).
+# let's write a function:   input: is good center, path to image, radius range to search for peaks.
+#                           output: peak spacing (pix). How many peaks, an arr w/ peaks in that range.
+#                           
 # a=xPeaks[0:7]
 
 # In [89]: a
@@ -731,3 +732,30 @@ plot(xPeaks,ringStars,'r+')
 # Out[91]: 15
 
 # In [92]: 
+# In [77]: gf=th.Fit('gaus','S','',225,239)
+#  FCN=141.449 FROM MIGRAD    STATUS=CONVERGED      82 CALLS          83 TOTAL
+#                      EDM=1.97313e-12    STRATEGY= 1      ERROR MATRIX ACCURATE 
+#   EXT PARAMETER                                   STEP         FIRST   
+#   NO.   NAME      VALUE            ERROR          SIZE      DERIVATIVE 
+#    1  Constant     4.79398e+02   1.49288e+01   6.35867e-02  -1.56251e-07
+#    2  Mean         2.31667e+02   3.74703e-02   2.13111e-04  -2.47214e-05
+#    3  Sigma        1.60658e+00   3.41430e-02   2.56546e-05  -3.05188e-04
+
+# In [78]: gf.Value(0)
+# Out[78]: 479.3979941558617
+
+# In [79]: gf.Value(1)
+# Out[79]: 231.6665489234626
+
+# In [80]: gf.Value(2)
+# Out[80]: 1.606575935147517
+
+s=r.TSpectrum()
+
+nFound=s.Search(th,1,"",0.005) #this updates the th1 with polies on the peaks, can see it in th1.Draw()
+xs=s.GetPositionX()
+ys=s.GetPositionY()
+for idx in range(nFound):
+    print xs[idx],ys[idx]
+
+
