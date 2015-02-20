@@ -757,5 +757,79 @@ xs=s.GetPositionX()
 ys=s.GetPositionY()
 for idx in range(nFound):
     print xs[idx],ys[idx]
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+from scipy import signal
+from smooth import *
+from saxsUtils import *
+import cv2
+import ROOT as r
+from npRootUtils import *
+import root_numpy as rnp
+
+# agbeh/im_0005241_caz.tiff: 203 352
+
+rowCenter=352
+colCenter=203
+
+# rowCenter=355 #xCenter
+# # rowCenter=354 #xCenter
+# colCenter=212 #yCenter
+# im=retrieveImage('AgBehRingData_plus_some_more/latest_0001139_caz.tiff')
+# /Users/michael/Develop/saxs/AgBeh/agbeh/im_0005241_caz.tiff
+# im=retrieveImage('AgBehRingData_plus_some_more/latest_0001141_caz.tiff')
+im=retrieveImage('agbeh/im_0005241_caz.tiff')
+rows,cols = im.shape
+xCenter=rowCenter
+yCenter=colCenter
+hSize=310 # half of the tiff on the long dimension (rows)
+nSteps=60
+stepDeg=90./(nSteps+1)
+d=0
+
+
+row=im[rowCenter,:]
+col=im[:,colCenter]
+
+# setTH1fFromAr1D(ar,name='array',title='title',xlow=0,xup=None):
+rowHist=makeTH1fFromAr1D(row,name='row',title='row')
+colHist=makeTH1fFromAr1D(col,name='col',title='col')
+peakHist=r.TH1F('peakHist','peaks',hSize,0,hSize)
+s=r.TSpectrum()
+
+nFound=s.Search(rowHist,1,'goff',0.005) #this updates the th1 with polies on the peaks, can see it in th1.Draw()
+xs=s.GetPositionX()
+
+ax=rwBuf2Array(xs,nFound)-colCenter
+rnp.fill_hist(peakHist, ax)
+
+nFound=s.Search(colHist,1,'goff',0.005)
+xs=s.GetPositionX()
+ax=rwBuf2Array(xs,nFound)-rowCenter
+rnp.fill_hist(peakHist, ax)
+
+
+for deg in arange(0,90,stepDeg):
+    if deg>0.0:
+        # print deg
+        M = cv2.getRotationMatrix2D((colCenter,rowCenter),deg,1)
+        rim=cv2.warpAffine(np.float32(im),M,(cols,rows))
+        row=rim[rowCenter,:]
+        col=rim[:,colCenter]
+
+        Found=s.Search(rowHist,1,'goff',0.005) 
+        xs=s.GetPositionX()
+        ax=rwBuf2Array(xs,nFound)-colCenter
+        rnp.fill_hist(peakHist, ax)
+
+        nFound=s.Search(colHist,1,'goff',0.005)
+        xs=s.GetPositionX()
+        ax=rwBuf2Array(xs,nFound)-rowCenter
+        rnp.fill_hist(peakHist, ax)
+
+# these peaks just fill one bin, at x.5, so I'll try fitting the slices to gaus ate the peak positions, then fill with mean.
+peakHist.Draw()
+
+
 
 
