@@ -714,7 +714,7 @@ ringStars=ones_like(xPeaks)+rowCenter
 plot(xPeaks,ringStars,'r+')
 
 # look at peaks from ~ 25 pix to ~110 pix, for this image agbeh/im_0005241_caz.tiff
-#  the point being that 1st order peak is oftem messed up, and we want 2nd to 8th or soself.
+#  the point being that 1st order peak is oftem messed up, and we want 2nd to 8th or so.
 
 
 # let's write a function:   input: is good center, path to image, radius range to search for peaks.
@@ -766,9 +766,11 @@ import cv2
 import ROOT as r
 from npRootUtils import *
 import root_numpy as rnp
-
+from numpy import *
 # agbeh/im_0005241_caz.tiff: 203 352
 
+firstPeak=25
+lastPeak=110
 rowCenter=352
 colCenter=203
 
@@ -801,6 +803,24 @@ nFound=s.Search(rowHist,1,'goff',0.005) #this updates the th1 with polies on the
 xs=s.GetPositionX()
 
 ax=rwBuf2Array(xs,nFound)-colCenter
+# get the peaks in the range we care about and fit gaussians
+axP=array([x for x in ax if x>=firstPeak and x<=lastPeak])+colCenter
+axM=array([x for x in ax if x<=-firstPeak and x>=-lastPeak])+colCenter
+
+
+
+# These are the peaks we will fit
+axP.sort()
+axM.sort()
+dxP=diff(axP)
+dxM=diff(axM)
+
+# can now use fitGausPeaks(th,peaks) to get the peak fits of axP and axM
+
+
+
+
+
 rnp.fill_hist(peakHist, ax)
 
 nFound=s.Search(colHist,1,'goff',0.005)
@@ -827,7 +847,7 @@ for deg in arange(0,90,stepDeg):
         ax=rwBuf2Array(xs,nFound)-rowCenter
         rnp.fill_hist(peakHist, ax)
 
-# these peaks just fill one bin, at x.5, so I'll try fitting the slices to gaus ate the peak positions, then fill with mean.
+# these peaks just fill one bin, at x.5, so I'll try fitting the slices to gaus at the peak positions, then fill with mean.
 peakHist.Draw()
 
 
