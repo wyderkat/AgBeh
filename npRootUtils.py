@@ -39,7 +39,7 @@ def fitGausPeaks(th,peaks):
         else:
             dp=dxP[idx]/2.
 
-        gf=th.Fit('gaus','QS','goff',peaks[idx]-dm,peaks[idx]+dp)
+        gf=th.Fit('gaus','QSNO','goff',peaks[idx]-dm,peaks[idx]+dp)
         fits.append((gf.Value(0),gf.Value(1),gf.Value(2)))
     return fits
 
