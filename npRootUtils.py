@@ -1,4 +1,4 @@
-import ROOT as r
+from ROOT import TH1F
 from numpy import *
 def setBinsToAr1D(hist,ar):#,xlow,xup):
     for i in range(len(ar)):
@@ -9,7 +9,7 @@ def makeTH1fFromAr1D(ar,name='array',title='title',xlow=0,xup=None):
     if not xup:
         xup=nbinsx
 
-    tHist=r.TH1F(name,title,nbinsx,xlow,xup)
+    tHist=TH1F(name,title,nbinsx,xlow,xup)
     setBinsToAr1D(tHist,ar)
     return tHist
 

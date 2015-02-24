@@ -750,7 +750,7 @@ plot(xPeaks,ringStars,'r+')
 # In [80]: gf.Value(2)
 # Out[80]: 1.606575935147517
 
-s=r.TSpectrum()
+s=TSpectrum()
 
 nFound=s.Search(th,1,"",0.005) #this updates the th1 with polies on the peaks, can see it in th1.Draw()
 xs=s.GetPositionX()
@@ -759,13 +759,13 @@ for idx in range(nFound):
     print xs[idx],ys[idx]
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-from scipy import signal
-from smooth import *
+# from scipy import signal
+# from smooth import *
 from saxsUtils import *
 import cv2
-import ROOT as r
+from ROOT import TH1F, TSpectrum
 from npRootUtils import *
-import root_numpy as rnp
+from root_numpy import fill_hist
 from numpy import *
 # agbeh/im_0005241_caz.tiff: 203 352
 
@@ -792,10 +792,10 @@ d=0
 
 # setTH1fFromAr1D(ar,name='array',title='title',xlow=0,xup=None):
 
-peaksHist= r.TH1F('peaksHist','peaks',hSize*10,0,hSize)
-dPeaksHist=r.TH1F('dPeaksHist','dPeaks',300,0,30)
-sRow=r.TSpectrum()
-sCol=r.TSpectrum()
+peaksHist= TH1F('peaksHist','peaks',hSize*10,0,hSize)
+dPeaksHist=TH1F('dPeaksHist','dPeaks',300,0,30)
+sRow=TSpectrum()
+sCol=TSpectrum()
 
 
 
@@ -829,20 +829,20 @@ fitsColM=fitGausPeaks(colHist,axColM)
 
 # Fill the peaks histo with the means of the gaus fits
 arFitsRowP=array([x[1] for x in fitsRowP])-colCenter
-rnp.fill_hist(peaksHist, arFitsRowP)
-rnp.fill_hist(dPeaksHist,diff(arFitsRowP))
+fill_hist(peaksHist, arFitsRowP)
+fill_hist(dPeaksHist,diff(arFitsRowP))
 
 arFitsRowM=array([x[1] for x in fitsRowM])-colCenter
-rnp.fill_hist(peaksHist, arFitsRowM)
-rnp.fill_hist(dPeaksHist,diff(arFitsRowM))
+fill_hist(peaksHist, arFitsRowM)
+fill_hist(dPeaksHist,diff(arFitsRowM))
 
 arFitsColP=array([x[1] for x in fitsColP])-rowCenter
-rnp.fill_hist(peaksHist, arFitsColP)
-rnp.fill_hist(dPeaksHist,diff(arFitsColP))
+fill_hist(peaksHist, arFitsColP)
+fill_hist(dPeaksHist,diff(arFitsColP))
 
 arFitsColM=array([x[1] for x in fitsColM])-rowCenter
-rnp.fill_hist(peaksHist, arFitsColM)
-rnp.fill_hist(dPeaksHist,diff(arFitsColM))
+fill_hist(peaksHist, arFitsColM)
+fill_hist(dPeaksHist,diff(arFitsColM))
 
 
 for deg in arange(0,90,stepDeg):
@@ -879,20 +879,20 @@ for deg in arange(0,90,stepDeg):
 
         # Fill the peaks histo with the means of the gaus fits
         arFitsRowP=array([x[1] for x in fitsRowP])-colCenter
-        rnp.fill_hist(peaksHist, arFitsRowP)
-        rnp.fill_hist(dPeaksHist,diff(arFitsRowP))
+        fill_hist(peaksHist, arFitsRowP)
+        fill_hist(dPeaksHist,diff(arFitsRowP))
 
         arFitsRowM=array([x[1] for x in fitsRowM])-colCenter
-        rnp.fill_hist(peaksHist, arFitsRowM)
-        rnp.fill_hist(dPeaksHist,diff(arFitsRowM))
+        fill_hist(peaksHist, arFitsRowM)
+        fill_hist(dPeaksHist,diff(arFitsRowM))
 
         arFitsColP=array([x[1] for x in fitsColP])-rowCenter
-        rnp.fill_hist(peaksHist, arFitsColP)
-        rnp.fill_hist(dPeaksHist,diff(arFitsColP))
+        fill_hist(peaksHist, arFitsColP)
+        fill_hist(dPeaksHist,diff(arFitsColP))
 
         arFitsColM=array([x[1] for x in fitsColM])-rowCenter
-        rnp.fill_hist(peaksHist, arFitsColM)
-        rnp.fill_hist(dPeaksHist,diff(arFitsColM))
+        fill_hist(peaksHist, arFitsColM)
+        fill_hist(dPeaksHist,diff(arFitsColM))
 
 # these peaks just fill one bin, at x.5, so I'll try fitting the slices to gaus at the peak positions, then fill with mean.
 # peaksHist.Draw()
@@ -902,6 +902,11 @@ dMean=gf.Value(1)
 dMeanEr=gf.Error(1)
 dSig=gf.Value(2)
 dSigEr=gf.Error(2)
+# this gets the peaks array out at the end
+nFound = sCol.Search(peaksHist,3.5,'',0.03)
+xsPeaks=sCol.GetPositionX()
+aPeaks=rwBuf2Array(xsPeaks,nFound)
+fitsPeaks=fitGausPeaks(peaksHist,aPeaks)
 
 print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
 
