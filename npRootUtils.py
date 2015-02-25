@@ -17,11 +17,16 @@ def rwBuf2Array(buf,bufLen):
     al=[buf[idx] for idx in range(bufLen)]
     return array(al)
 
+def fill_hist(th1,ar1):
+    # fill a th1 from a 1d np array
+    for idx in range(len(ar1)):
+        th1.Fill(ar1[idx])
+
 
 def fitGausPeaks(th,peaks):
     # th:    a thist which we've done some peak fitting to, and we want to get gaussian fits to those peaks
     # peaks: an np array of the x coords of the peaks we want to fit.
-    # returns a list of tuples (const,mean,sigma), one entry for each peak in peaks
+    # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
 
     peaks.sort()
     
@@ -29,18 +34,25 @@ def fitGausPeaks(th,peaks):
     # peaks: [ 231.5,  245.5,  260.5,  274.5,  288.5]
     # dxP:         [ 14.,    15.,    14.,    14.]
     fits=[]
-    for idx in range(len(peaks)):
-        if idx==0:
-            dm=dxP[idx]/2.
-        else:
-            dm=dxP[idx-1]/2.
-        if idx==len(peaks)-1:
-            dp=dxP[idx-1]/2.
-        else:
-            dp=dxP[idx]/2.
+    if len(peaks)>1:
+        for idx in range(len(peaks)):
+            
+            if idx==0:
+                dm=dxP[idx]/2.
+            else:
+                dm=dxP[idx-1]/2.
+            if idx==len(peaks)-1:
+                dp=dxP[idx-1]/2.
+            else:
+                dp=dxP[idx]/2.
 
-        gf=th.Fit('gaus','QSNO','goff',peaks[idx]-dm,peaks[idx]+dp)
-        fits.append((gf.Value(0),gf.Value(1),gf.Value(2)))
+            gf=th.Fit('gaus','QSNO','goff',peaks[idx]-dm,peaks[idx]+dp)
+            # fits.append((gf.Value(0),gf.Value(1),gf.Value(2)))
+            fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
+    else:
+        gf=th.Fit('gaus','QSNO','goff')
+        fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
+        
     return fits
 
 
