@@ -3,6 +3,8 @@ from numpy import *
 def setBinsToAr1D(hist,ar):#,xlow,xup):
     for i in range(len(ar)):
         hist.SetBinContent(i+1,ar[i])
+
+# Default x-axis is 0-len(ar). Pass different xlow and xup to change x-axis
 def makeTH1fFromAr1D(ar,name='array',title='title',xlow=0,xup=None):
     # TH1(const char* name, const char* title, Int_t nbinsx, Double_t xlow, Double_t xup)
     nbinsx=len(ar)
@@ -24,8 +26,8 @@ def fill_hist(th1,ar1):
 
 
 def fitGausPeaks(th,peaks):
-    # th:    a thist which we've done some peak fitting to, and we want to get gaussian fits to those peaks
-    # peaks: an np array of the x coords of the peaks we want to fit.
+    # th:    a tHist which we've done some peak fitting to, and we want to get gaussian fits to those peaks
+    # peaks: an np array of the approx x coords of the peaks we want to fit.
     # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
 
     peaks.sort()
