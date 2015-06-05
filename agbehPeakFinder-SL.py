@@ -66,13 +66,14 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
         rowCenter=int(center[0])
         colCenter=int(center[1])
 
-        rows,cols = im.shape
+        rows,cols = im.shape[0:2] # if we are loading u8 images from my converter, they are (619, 487, 3), so we get
+        #                           ValueError: too many values to unpack. So we limit it to the first two.
         # print im.shape
         hSize=max(im.shape)/2+1 # half of the tiff on the long dimension (rows)
         stepDeg=90./(nSteps+1)
 
         peaksHist= TH1F('peaksHist','peaks',hSize*10,0,hSize)
-        dPeaksHist=TH1F('dPeaksHist','dPeaks',300,0,30)
+        dPeaksHist=TH1F('dPeaksHist','dPeaks',500,0,200)
         sRow=TSpectrum()
         sCol=TSpectrum()
 
@@ -106,20 +107,26 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
 
         # Fill the peaks histo with the means of the gaus fits
         arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
+        print 'arFitsRowP',arFitsRowP
         fill_hist(peaksHist, arFitsRowP)
         fill_hist(dPeaksHist,diff(arFitsRowP))
 
         arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
+        print 'arFitsRowM',arFitsRowM
         fill_hist(peaksHist, arFitsRowM)
         fill_hist(dPeaksHist,diff(arFitsRowM))
 
         arFitsColP=array([x[0] for x in fitsColP])-rowCenter
+        print 'arFitsColP',arFitsColP
         fill_hist(peaksHist, arFitsColP)
         fill_hist(dPeaksHist,diff(arFitsColP))
 
         arFitsColM=array([x[0] for x in fitsColM])-rowCenter
+        print 'arFitsColM',arFitsColM
         fill_hist(peaksHist, arFitsColM)
         fill_hist(dPeaksHist,diff(arFitsColM))
+
+        # print '.GetNbinsX() *********************************************',
 
 
         for deg in arange(0,90,stepDeg):
@@ -129,7 +136,7 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
                 rim=cv2.warpAffine(float32(im),M,(cols,rows))
                 row=rim[rowCenter,:]
                 col=rim[:,colCenter]
-
+                print 'len row,col',len(row),len(col)
                 setBinsToAr1D(rowHist,row)
                 setBinsToAr1D(colHist,col)
 
@@ -153,31 +160,42 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
                 fitsRowM=fitGausPeaks(rowHist,axRowM)
                 fitsColP=fitGausPeaks(colHist,axColP)
                 fitsColM=fitGausPeaks(colHist,axColM)
-
+                # print fitsRowP,fitsRowM,fitsColP,fitsColM
                 # Fill the peaks histo with the means of the gaus fits
                 arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
+                print 'arFitsRowP',arFitsRowP
                 fill_hist(peaksHist, arFitsRowP)
                 fill_hist(dPeaksHist,diff(arFitsRowP))
+                print 'diff(arFitsRowP)',diff(arFitsColP)
 
                 arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
+                print 'arFitsRowM',arFitsRowM
                 fill_hist(peaksHist, arFitsRowM)
                 fill_hist(dPeaksHist,diff(arFitsRowM))
+                print 'diff(arFitsRowM)',diff(arFitsColP)
+
 
                 arFitsColP=array([x[0] for x in fitsColP])-rowCenter
+                print 'arFitsColP',arFitsColP
                 fill_hist(peaksHist, arFitsColP)
                 fill_hist(dPeaksHist,diff(arFitsColP))
-
+                print 'diff(arFitsColP)',diff(arFitsColP)
+                
                 arFitsColM=array([x[0] for x in fitsColM])-rowCenter
+                print 'arFitsColM',arFitsColM
                 fill_hist(peaksHist, arFitsColM)
                 fill_hist(dPeaksHist,diff(arFitsColM))
-
+                print 'diff(arFitsColM)',diff(arFitsColM)
         # these peaks just fill one bin, at x.5, so I'll try fitting the slices to gaus at the peak positions, then fill with mean.
         # peaksHist.Draw()
         # tc=TCanvas()
         # tc.Divide(1,2)
         # tc.cd(1)
         # dPeaksHist.Draw()
+        y,x=setAr1DtoBins(dPeaksHist)
+        print 'dPeaksHist:',y,x
 
+        print 
         gf=dPeaksHist.Fit('gaus','QSNO','goff')
         dMean=gf.Value(1)
         dMeanEr=gf.Error(1)
@@ -191,6 +209,8 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
         aPeaks=rwBuf2Array(xsPeaks,nFound)
         aPeaks=aPeaks[aPeaks>=firstPeak]
         aPeaks=aPeaks[aPeaks <= lastPeak]
+        y,x=setAr1DtoBins(dPeaksHist)
+        print 'peaksHist',y,x
         fitsPeaks=fitGausPeaks(peaksHist,aPeaks)
 
         # print fitsPeaks
@@ -201,6 +221,7 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
                # peaksList is a list of tuples (peak,sig,errPeak,errSig), as radius from center. The peaks are
                # located again by doing gaussian fits to the peaks in the histogram built from the ocation of every 
                # peak found during the slicing and fitting process.
+        # dMean, dSig, dMeanEr, dSigEr=(0,0,0,0) 
         if verbose:
             print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
             
@@ -240,8 +261,9 @@ def retrieveImage(filePath,clearVoids=False,makeU8=False):
 def main(argv=sys.argv):
     im=argv[1]
     center=(argv[2],argv[3])
-
     p=findPeaks(im,center,verbose=True)
+    
+    # p=findPeaks(im,center,verbose=True,rad=(0,110))
     print
     print p
 

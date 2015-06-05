@@ -4,6 +4,14 @@ def setBinsToAr1D(hist,ar):#,xlow,xup):
     for i in range(len(ar)):
         hist.SetBinContent(i+1,ar[i])
 
+def setAr1DtoBins(hist):
+    nBins=hist.GetNbinsX()
+    ar=zeros((nBins))
+    ax=zeros((nBins))
+    for idx in range(nBins):
+        ar[idx]=hist.GetBinContent(idx+1)
+        ax[idx]=hist.GetBinCenter(idx+1)
+    return (ar,ax)
 # Default x-axis is 0-len(ar). Pass different xlow and xup to change x-axis
 def makeTH1fFromAr1D(ar,name='array',title='title',xlow=0,xup=None):
     # TH1(const char* name, const char* title, Int_t nbinsx, Double_t xlow, Double_t xup)
@@ -21,6 +29,7 @@ def rwBuf2Array(buf,bufLen):
 
 def fill_hist(th1,ar1):
     # fill a th1 from a 1d np array
+    print 'filling',ar1
     for idx in range(len(ar1)):
         th1.Fill(ar1[idx])
 
@@ -31,12 +40,15 @@ def fitGausPeaks(th,peaks):
     # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
 
     peaks.sort()
-    
+    # print peaks
     dxP=diff(peaks)
     # peaks: [ 231.5,  245.5,  260.5,  274.5,  288.5]
     # dxP:         [ 14.,    15.,    14.,    14.]
     fits=[]
+    y,x=setAr1DtoBins(th)
+    print 'histo len: ',len(y),len(x)
     if len(peaks)>1:
+        # print 'MORE THAN ONE'
         for idx in range(len(peaks)):
             
             if idx==0:
@@ -47,12 +59,18 @@ def fitGausPeaks(th,peaks):
                 dp=dxP[idx-1]/2.
             else:
                 dp=dxP[idx]/2.
-
+            # print y[peaks[idx]-dm:peaks[idx]+dp]
+            # fits.append(1)
             gf=th.Fit('gaus','QSNO','goff',peaks[idx]-dm,peaks[idx]+dp)
+            
+            # print 'MORE THAN ONE',type(gf)
             # fits.append((gf.Value(0),gf.Value(1),gf.Value(2)))
             fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
     else:
+        # print 'JUST ONE'
+        # print y
         gf=th.Fit('gaus','QSNO','goff')
+        
         fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
         
     return fits
