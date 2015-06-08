@@ -5,7 +5,7 @@ doc string here
 """
 # from saxsUtils import *
 import cv2
-from ROOT import TH1F, TSpectrum #, TCanvas
+from ROOT import TH1D, TSpectrum #, TCanvas
 # from root_numpy import fill_hist
 from numpy import *
 # from libtiff import TIFF
@@ -18,7 +18,7 @@ from pilatus_np import JJTiff
 # let's write a function:   input: is good center, path to image, radius range to search for peaks.
 #                           output: peak spacing (pix). How many peaks, an arr w/ peaks in that range.
 
-def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
+def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False,doLogIm=False):
     """
 
     findPeaks(center,image,rad)
@@ -58,13 +58,21 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
     try:
         # determine if image is an image or a path:
         if type(image)==str:
-            image=retrieveImage(image)
+            image=retrieveImage(image,doLog=doLogIm)
 
         im=image
+
         firstPeak=int(rad[0])
         lastPeak=int(rad[1])
         rowCenter=int(center[0])
         colCenter=int(center[1])
+
+        # TSpectrum will ignore peaks that are less than peakThresh * the max peak height
+        if doLogIm:
+            # we will smooth if we do log, so we can (hopefully) safely look at smaller peaks
+            peakThresh=0.0025
+        else:
+            peakThresh=0.005
 
         rows,cols = im.shape[0:2] # if we are loading u8 images from my converter, they are (619, 487, 3), so we get
         #                           ValueError: too many values to unpack. So we limit it to the first two.
@@ -72,20 +80,28 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
         hSize=max(im.shape)/2+1 # half of the tiff on the long dimension (rows)
         stepDeg=90./(nSteps+1)
 
-        peaksHist= TH1F('peaksHist','peaks',hSize*10,0,hSize)
-        dPeaksHist=TH1F('dPeaksHist','dPeaks',500,0,200)
+        # TH1(const char* name, const char* title, Int_t nbinsx, Double_t xlow, Double_t xup)
+        peaksHist= TH1D('peaksHist','peaks',hSize*10,0,hSize)
+        dPeaksHist=TH1D('dPeaksHist','dPeaks',300,0,hSize)
         sRow=TSpectrum()
         sCol=TSpectrum()
 
-        row=im[rowCenter,:]
-        col=im[:,colCenter]
+        # row=im[rowCenter,:]
+        # col=im[:,colCenter]
 
-        rowHist=makeTH1fFromAr1D(row,name='row',title='row')
-        colHist=makeTH1fFromAr1D(col,name='col',title='col')
+        # Had some trouble here with weaker images giving no peaks - so do a log and smooth can help - but it's all kind of touchy...
+        
+        row=array(im[rowCenter,:],dtype=double)
+        col=array(im[:,colCenter],dtype=double)
+        sRow.SmoothMarkov(row,len(row),3)
+        sCol.SmoothMarkov(col,len(col),3)
+
+        rowHist=makeTH1DFromAr1D(row,name='row',title='row')
+        colHist=makeTH1DFromAr1D(col,name='col',title='col')
         
         #this updates the th1 with polies on the peaks, can see it in th1.Draw(). goff turns that off.
-        nFoundRow=sRow.Search(rowHist,1,'goff',0.005) 
-        nFoundCol=sCol.Search(colHist,1,'goff',0.005)
+        nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh) 
+        nFoundCol=sCol.Search(colHist,1,'goff',peakThresh)
 
         xsRow=sRow.GetPositionX()
         xsCol=sCol.GetPositionX()
@@ -134,14 +150,18 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
                 # print deg
                 M = cv2.getRotationMatrix2D((colCenter,rowCenter),deg,1)
                 rim=cv2.warpAffine(float32(im),M,(cols,rows))
-                row=rim[rowCenter,:]
-                col=rim[:,colCenter]
+                # row=rim[rowCenter,:]
+                # col=rim[:,colCenter]
+                row=array(rim[rowCenter,:],dtype=double)
+                col=array(rim[:,colCenter],dtype=double)
+                sRow.SmoothMarkov(row,len(row),3)
+                sCol.SmoothMarkov(col,len(col),3)
                 print 'len row,col',len(row),len(col)
                 setBinsToAr1D(rowHist,row)
                 setBinsToAr1D(colHist,col)
 
-                nFoundRow=sRow.Search(rowHist,1,'goff',0.005) 
-                nFoundCol=sCol.Search(colHist,1,'goff',0.005)
+                nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh) 
+                nFoundCol=sCol.Search(colHist,1,'goff',peakThresh)
 
                 xsRow=sRow.GetPositionX()
                 xsCol=sCol.GetPositionX()
@@ -234,7 +254,7 @@ def findPeaks(image,center,rad=(25,110),nSteps=60,verbose=False):
 
 
 # retrieve image from file system and convert to uint8 if desired
-def retrieveImage(filePath,clearVoids=False,makeU8=False):
+def retrieveImage(filePath,clearVoids=False,makeU8=False,doLog=False):
     # return a np array (2dim) of a saxslab tiff file
 
     try:
@@ -248,6 +268,9 @@ def retrieveImage(filePath,clearVoids=False,makeU8=False):
     # -1, -2, are 255, 254 once we make them uint8, so let's just make the < 0 pix be 0.
     if clearVoids:
         image[image<0]=0
+    if doLog:
+        image[image<1]=1
+        image=log(image)
     if makeU8:
         image[image<0]=0 # this is needed for uint8
         imMax=amax(image)
@@ -261,7 +284,8 @@ def retrieveImage(filePath,clearVoids=False,makeU8=False):
 def main(argv=sys.argv):
     im=argv[1]
     center=(argv[2],argv[3])
-    p=findPeaks(im,center,verbose=True)
+    doLog=int(argv[4])
+    p=findPeaks(im,center,rad=(25,200),verbose=True,doLogIm=doLog)
     
     # p=findPeaks(im,center,verbose=True,rad=(0,110))
     print

@@ -1,4 +1,4 @@
-from ROOT import TH1F
+from ROOT import TH1D
 from numpy import *
 def setBinsToAr1D(hist,ar):#,xlow,xup):
     for i in range(len(ar)):
@@ -13,13 +13,13 @@ def setAr1DtoBins(hist):
         ax[idx]=hist.GetBinCenter(idx+1)
     return (ar,ax)
 # Default x-axis is 0-len(ar). Pass different xlow and xup to change x-axis
-def makeTH1fFromAr1D(ar,name='array',title='title',xlow=0,xup=None):
+def makeTH1DFromAr1D(ar,name='array',title='title',xlow=0,xup=None):
     # TH1(const char* name, const char* title, Int_t nbinsx, Double_t xlow, Double_t xup)
     nbinsx=len(ar)
     if not xup:
         xup=nbinsx
 
-    tHist=TH1F(name,title,nbinsx,xlow,xup)
+    tHist=TH1D(name,title,nbinsx,xlow,xup)
     setBinsToAr1D(tHist,ar)
     return tHist
 
@@ -46,7 +46,7 @@ def fitGausPeaks(th,peaks):
     # dxP:         [ 14.,    15.,    14.,    14.]
     fits=[]
     y,x=setAr1DtoBins(th)
-    print 'histo len: ',len(y),len(x)
+    # print 'histo len: ',len(y),len(x)
     if len(peaks)>1:
         # print 'MORE THAN ONE'
         for idx in range(len(peaks)):
@@ -61,7 +61,8 @@ def fitGausPeaks(th,peaks):
                 dp=dxP[idx]/2.
             # print y[peaks[idx]-dm:peaks[idx]+dp]
             # fits.append(1)
-            gf=th.Fit('gaus','QSNO','goff',peaks[idx]-dm,peaks[idx]+dp)
+            print 'fit: low,high ',peaks[idx]-dm,peaks[idx]-dm
+            gf=th.Fit('gaus','QSNO','goff',peaks[idx]-dm,peaks[idx]-dm)
             
             # print 'MORE THAN ONE',type(gf)
             # fits.append((gf.Value(0),gf.Value(1),gf.Value(2)))

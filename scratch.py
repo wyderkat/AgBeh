@@ -930,8 +930,8 @@ from npRootUtils import *
 from numpy import *
 # agbeh/im_0005241_caz.tiff: 203 352
 
-firstPeak=25
-lastPeak=110
+firstPeak=10
+lastPeak=200
 rowCenter=350
 colCenter=200
 
@@ -941,7 +941,9 @@ colCenter=200
 # im=retrieveImage('AgBehRingData_plus_some_more/latest_0001139_caz.tiff')
 # /Users/michael/Develop/saxs/AgBeh/agbeh/im_0005241_caz.tiff
 # im=retrieveImage('AgBehRingData_plus_some_more/latest_0001141_caz.tiff')
-im=retrieveImage('SFU/raw8/u8_latest_0000138_caz.tiff')
+im=retrieveImage('SFU/raw/latest_0000146_caz.tiff',doLog=True)
+# im=retrieveImage('SFU/raw/latest_0000137_caz.tiff',doLog=True)
+# im=retrieveImage('SFU/raw/latest_0000146_caz.tiff')
 rows,cols = im.shape[0:2]
 xCenter=rowCenter
 yCenter=colCenter
@@ -949,27 +951,34 @@ hSize=310 # half of the tiff on the long dimension (rows)
 nSteps=60
 stepDeg=90./(nSteps+1)
 d=0
-
+doLogIm=True
+smoothingWindow=7
+if doLogIm:
+    # we will smooth if we do log, so we can (hopefully) safely look at smaller peaks
+    peakThresh=0.01
+else:
+    peakThresh=0.005
 
 # setTH1fFromAr1D(ar,name='array',title='title',xlow=0,xup=None):
 
-peaksHist= TH1F('peaksHist','peaks',hSize*10,0,hSize)
-dPeaksHist=TH1F('dPeaksHist','dPeaks',300,0,30)
+peaksHist= TH1D('peaksHist','peaks',hSize*10,0,hSize)
+dPeaksHist=TH1D('dPeaksHist','dPeaks',hSize,0,hSize)
 sRow=TSpectrum()
 sCol=TSpectrum()
 
+row=array(im[rowCenter,:],dtype=double)
+col=array(im[:,colCenter],dtype=double)
+sRow.SmoothMarkov(row,len(row),smoothingWindow)
+sCol.SmoothMarkov(col,len(col),smoothingWindow)
 
-
-row=im[rowCenter,:]
-col=im[:,colCenter]
-
-rowHist=makeTH1fFromAr1D(row,name='row',title='row')
-colHist=makeTH1fFromAr1D(col,name='col',title='col')
+rowHist=makeTH1DFromAr1D(row,name='row',title='row')
+colHist=makeTH1DFromAr1D(col,name='col',title='col')
 
 #this updates the th1 with polies on the peaks, can see it in th1.Draw(). goff turns that off.
-nFoundRow=sRow.Search(rowHist,1,'goff',0.005) 
-nFoundCol=sCol.Search(colHist,1,'goff',0.005)
-
+# nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh) 
+# nFoundCol=sCol.Search(colHist,1,'goff',peakThresh)
+nFoundRow=sRow.Search(rowHist,1,'',peakThresh) 
+nFoundCol=sCol.Search(colHist,1,'',peakThresh)
 xsRow=sRow.GetPositionX()
 xsCol=sCol.GetPositionX()
 
@@ -990,19 +999,19 @@ fitsColM=fitGausPeaks(colHist,axColM)
 
 # Fill the peaks histo with the means of the gaus fits
 arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
-fill_hist(peaksHist, arFitsRowP)
+fill_hist(peaksHist, abs(arFitsRowP))
 fill_hist(dPeaksHist,diff(arFitsRowP))
 
 arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
-fill_hist(peaksHist, arFitsRowM)
+fill_hist(peaksHist, abs(arFitsRowM))
 fill_hist(dPeaksHist,diff(arFitsRowM))
 
 arFitsColP=array([x[0] for x in fitsColP])-rowCenter
-fill_hist(peaksHist, arFitsColP)
+fill_hist(peaksHist, abs(arFitsColP))
 fill_hist(dPeaksHist,diff(arFitsColP))
 
 arFitsColM=array([x[0] for x in fitsColM])-rowCenter
-fill_hist(peaksHist, arFitsColM)
+fill_hist(peaksHist, abs(arFitsColM))
 fill_hist(dPeaksHist,diff(arFitsColM))
 
 
@@ -1011,48 +1020,60 @@ for deg in arange(0,90,stepDeg):
         # print deg
         M = cv2.getRotationMatrix2D((colCenter,rowCenter),deg,1)
         rim=cv2.warpAffine(np.float32(im),M,(cols,rows))
-        row=rim[rowCenter,:]
-        col=rim[:,colCenter]
+        row=array(rim[rowCenter,:],dtype=double)
+        col=array(rim[:,colCenter],dtype=double)
+        sRow.SmoothMarkov(row,len(row),smoothingWindow)
+        sCol.SmoothMarkov(col,len(col),smoothingWindow)
+
 
         setBinsToAr1D(rowHist,row)
         setBinsToAr1D(colHist,col)
 
-        nFoundRow=sRow.Search(rowHist,1,'goff',0.005) 
-        nFoundCol=sCol.Search(colHist,1,'goff',0.005)
+        # nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh) 
+        # nFoundCol=sCol.Search(colHist,1,'goff',peakThresh)
+        nFoundRow=sRow.Search(rowHist,1,'',peakThresh) 
+        nFoundCol=sCol.Search(colHist,1,'',peakThresh)
+
 
         xsRow=sRow.GetPositionX()
         xsCol=sCol.GetPositionX()
 
         axRow=rwBuf2Array(xsRow,nFoundRow)-colCenter
         axCol=rwBuf2Array(xsCol,nFoundCol)-rowCenter
-        # get the peaks in the range we care about and fit gaussians
+        print axRow,axCol
+        # get the peaks in the range we care about and fit gaussians. These are abs coords, not radial from beam center
         axRowP=array([x for x in axRow if x>=firstPeak and x<=lastPeak])+colCenter
         axRowM=array([x for x in axRow if x<=-firstPeak and x>=-lastPeak])+colCenter
         axColP=array([x for x in axCol if x>=firstPeak and x<=lastPeak])+rowCenter
         axColM=array([x for x in axCol if x<=-firstPeak and x>=-lastPeak])+rowCenter
+        print 'peaks *************\n',axRowP,axRowM,axColP,axColM
         # can now use fitGausPeaks(th,peaks) to get the peak fits of axP and axM
 
         # fitGausPeaks gives a list of tuples: [(const,mean,sigma),(const,mean,sigma),...]
         fitsRowP=fitGausPeaks(rowHist,axRowP)
+        print 'fits **************\n',fitsRowP
         fitsRowM=fitGausPeaks(rowHist,axRowM)
+        print fitsRowM
         fitsColP=fitGausPeaks(colHist,axColP)
+        print fitsColP
         fitsColM=fitGausPeaks(colHist,axColM)
+        print fitsColM
 
         # Fill the peaks histo with the means of the gaus fits
         arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
-        fill_hist(peaksHist, arFitsRowP)
+        fill_hist(peaksHist, abs(arFitsRowP))
         fill_hist(dPeaksHist,diff(arFitsRowP))
 
         arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
-        fill_hist(peaksHist, arFitsRowM)
+        fill_hist(peaksHist, abs(arFitsRowM))
         fill_hist(dPeaksHist,diff(arFitsRowM))
 
         arFitsColP=array([x[0] for x in fitsColP])-rowCenter
-        fill_hist(peaksHist, arFitsColP)
+        fill_hist(peaksHist, abs(arFitsColP))
         fill_hist(dPeaksHist,diff(arFitsColP))
 
         arFitsColM=array([x[0] for x in fitsColM])-rowCenter
-        fill_hist(peaksHist, arFitsColM)
+        fill_hist(peaksHist, abs(arFitsColM))
         fill_hist(dPeaksHist,diff(arFitsColM))
 
 # these peaks just fill one bin, at x.5, so I'll try fitting the slices to gaus at the peak positions, then fill with mean.
