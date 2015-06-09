@@ -769,8 +769,8 @@ from npRootUtils import *
 from numpy import *
 # agbeh/im_0005241_caz.tiff: 203 352
 
-firstPeak=25
-lastPeak=110
+firstPeak=100
+lastPeak=352
 rowCenter=352
 colCenter=203
 
@@ -930,8 +930,8 @@ from npRootUtils import *
 from numpy import *
 # agbeh/im_0005241_caz.tiff: 203 352
 
-firstPeak=10
-lastPeak=200
+firstPeak=70
+lastPeak=350
 rowCenter=350
 colCenter=200
 
@@ -941,7 +941,8 @@ colCenter=200
 # im=retrieveImage('AgBehRingData_plus_some_more/latest_0001139_caz.tiff')
 # /Users/michael/Develop/saxs/AgBeh/agbeh/im_0005241_caz.tiff
 # im=retrieveImage('AgBehRingData_plus_some_more/latest_0001141_caz.tiff')
-im=retrieveImage('SFU/raw/latest_0000146_caz.tiff',doLog=True)
+# im=retrieveImage('SFU/raw/latest_0000146_caz.tiff',doLog=True)
+im=retrieveImage('SFU/raw/latest_0000166_caz.tiff',doLog=True)
 # im=retrieveImage('SFU/raw/latest_0000137_caz.tiff',doLog=True)
 # im=retrieveImage('SFU/raw/latest_0000146_caz.tiff')
 rows,cols = im.shape[0:2]
@@ -955,7 +956,7 @@ doLogIm=True
 smoothingWindow=7
 if doLogIm:
     # we will smooth if we do log, so we can (hopefully) safely look at smaller peaks
-    peakThresh=0.01
+    peakThresh=0.0025
 else:
     peakThresh=0.005
 
@@ -989,30 +990,52 @@ axRowP=array([x for x in axRow if x>=firstPeak and x<=lastPeak])+colCenter
 axRowM=array([x for x in axRow if x<=-firstPeak and x>=-lastPeak])+colCenter
 axColP=array([x for x in axCol if x>=firstPeak and x<=lastPeak])+rowCenter
 axColM=array([x for x in axCol if x<=-firstPeak and x>=-lastPeak])+rowCenter
-# can now use fitGausPeaks(th,peaks) to get the peak fits of axP and axM
-
-# fitGausPeaks gives a list of tuples: [(const,mean,sigma),(const,mean,sigma),...]
-fitsRowP=fitGausPeaks(rowHist,axRowP)
-fitsRowM=fitGausPeaks(rowHist,axRowM)
-fitsColP=fitGausPeaks(colHist,axColP)
-fitsColM=fitGausPeaks(colHist,axColM)
+print 'peaks *************\n',axRowP,axRowM,axColP,axColM
 
 # Fill the peaks histo with the means of the gaus fits
-arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
-fill_hist(peaksHist, abs(arFitsRowP))
-fill_hist(dPeaksHist,diff(arFitsRowP))
+# arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
+fill_hist(peaksHist, abs(axRowP))
+fill_hist(dPeaksHist,diff(axRowP))
 
-arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
-fill_hist(peaksHist, abs(arFitsRowM))
-fill_hist(dPeaksHist,diff(arFitsRowM))
+# arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
+fill_hist(peaksHist, abs(axRowM))
+fill_hist(dPeaksHist,diff(axRowM))
 
-arFitsColP=array([x[0] for x in fitsColP])-rowCenter
-fill_hist(peaksHist, abs(arFitsColP))
-fill_hist(dPeaksHist,diff(arFitsColP))
+# arFitsColP=array([x[0] for x in fitsColP])-rowCenter
+fill_hist(peaksHist, abs(axColP))
+fill_hist(dPeaksHist,diff(axColP))
 
-arFitsColM=array([x[0] for x in fitsColM])-rowCenter
-fill_hist(peaksHist, abs(arFitsColM))
-fill_hist(dPeaksHist,diff(arFitsColM))
+# arFitsColM=array([x[0] for x in fitsColM])-rowCenter
+fill_hist(peaksHist, abs(axColM))
+fill_hist(dPeaksHist,diff(axColM))
+# axRowP=array([x for x in axRow if x>=firstPeak and x<=lastPeak])+colCenter
+# axRowM=array([x for x in axRow if x<=-firstPeak and x>=-lastPeak])+colCenter
+# axColP=array([x for x in axCol if x>=firstPeak and x<=lastPeak])+rowCenter
+# axColM=array([x for x in axCol if x<=-firstPeak and x>=-lastPeak])+rowCenter
+# # can now use fitGausPeaks(th,peaks) to get the peak fits of axP and axM
+
+# # fitGausPeaks gives a list of tuples: [(const,mean,sigma),(const,mean,sigma),...]
+# fitsRowP=fitGausPeaks(rowHist,axRowP)
+# fitsRowM=fitGausPeaks(rowHist,axRowM)
+# fitsColP=fitGausPeaks(colHist,axColP)
+# fitsColM=fitGausPeaks(colHist,axColM)
+
+# # Fill the peaks histo with the means of the gaus fits
+# arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
+# fill_hist(peaksHist, abs(arFitsRowP))
+# fill_hist(dPeaksHist,diff(arFitsRowP))
+
+# arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
+# fill_hist(peaksHist, abs(arFitsRowM))
+# fill_hist(dPeaksHist,diff(arFitsRowM))
+
+# arFitsColP=array([x[0] for x in fitsColP])-rowCenter
+# fill_hist(peaksHist, abs(arFitsColP))
+# fill_hist(dPeaksHist,diff(arFitsColP))
+
+# arFitsColM=array([x[0] for x in fitsColM])-rowCenter
+# fill_hist(peaksHist, abs(arFitsColM))
+# fill_hist(dPeaksHist,diff(arFitsColM))
 
 
 for deg in arange(0,90,stepDeg):
@@ -1042,39 +1065,56 @@ for deg in arange(0,90,stepDeg):
         axCol=rwBuf2Array(xsCol,nFoundCol)-rowCenter
         print axRow,axCol
         # get the peaks in the range we care about and fit gaussians. These are abs coords, not radial from beam center
-        axRowP=array([x for x in axRow if x>=firstPeak and x<=lastPeak])+colCenter
-        axRowM=array([x for x in axRow if x<=-firstPeak and x>=-lastPeak])+colCenter
-        axColP=array([x for x in axCol if x>=firstPeak and x<=lastPeak])+rowCenter
-        axColM=array([x for x in axCol if x<=-firstPeak and x>=-lastPeak])+rowCenter
+        axRowP=array([x for x in axRow if x>=firstPeak and x<=lastPeak])#+colCenter
+        axRowM=array([x for x in axRow if x<=-firstPeak and x>=-lastPeak])#+colCenter
+        axColP=array([x for x in axCol if x>=firstPeak and x<=lastPeak])#+rowCenter
+        axColM=array([x for x in axCol if x<=-firstPeak and x>=-lastPeak])#+rowCenter
         print 'peaks *************\n',axRowP,axRowM,axColP,axColM
+
+        # Fill the peaks histo with the means of the gaus fits
+        # arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
+        fill_hist(peaksHist, abs(axRowP))
+        fill_hist(dPeaksHist,diff(axRowP))
+
+        # arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
+        fill_hist(peaksHist, abs(axRowM))
+        fill_hist(dPeaksHist,diff(axRowM))
+
+        # arFitsColP=array([x[0] for x in fitsColP])-rowCenter
+        fill_hist(peaksHist, abs(axColP))
+        fill_hist(dPeaksHist,diff(axColP))
+
+        # arFitsColM=array([x[0] for x in fitsColM])-rowCenter
+        fill_hist(peaksHist, abs(axColM))
+        fill_hist(dPeaksHist,diff(axColM))
         # can now use fitGausPeaks(th,peaks) to get the peak fits of axP and axM
 
         # fitGausPeaks gives a list of tuples: [(const,mean,sigma),(const,mean,sigma),...]
-        fitsRowP=fitGausPeaks(rowHist,axRowP)
-        print 'fits **************\n',fitsRowP
-        fitsRowM=fitGausPeaks(rowHist,axRowM)
-        print fitsRowM
-        fitsColP=fitGausPeaks(colHist,axColP)
-        print fitsColP
-        fitsColM=fitGausPeaks(colHist,axColM)
-        print fitsColM
+        # fitsRowP=fitGausPeaks(rowHist,axRowP)
+        # print 'fits **************\n',fitsRowP
+        # fitsRowM=fitGausPeaks(rowHist,axRowM)
+        # print fitsRowM
+        # fitsColP=fitGausPeaks(colHist,axColP)
+        # print fitsColP
+        # fitsColM=fitGausPeaks(colHist,axColM)
+        # print fitsColM
 
-        # Fill the peaks histo with the means of the gaus fits
-        arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
-        fill_hist(peaksHist, abs(arFitsRowP))
-        fill_hist(dPeaksHist,diff(arFitsRowP))
+        # # Fill the peaks histo with the means of the gaus fits
+        # arFitsRowP=array([x[0] for x in fitsRowP])-colCenter
+        # fill_hist(peaksHist, abs(arFitsRowP))
+        # fill_hist(dPeaksHist,diff(arFitsRowP))
 
-        arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
-        fill_hist(peaksHist, abs(arFitsRowM))
-        fill_hist(dPeaksHist,diff(arFitsRowM))
+        # arFitsRowM=array([x[0] for x in fitsRowM])-colCenter
+        # fill_hist(peaksHist, abs(arFitsRowM))
+        # fill_hist(dPeaksHist,diff(arFitsRowM))
 
-        arFitsColP=array([x[0] for x in fitsColP])-rowCenter
-        fill_hist(peaksHist, abs(arFitsColP))
-        fill_hist(dPeaksHist,diff(arFitsColP))
+        # arFitsColP=array([x[0] for x in fitsColP])-rowCenter
+        # fill_hist(peaksHist, abs(arFitsColP))
+        # fill_hist(dPeaksHist,diff(arFitsColP))
 
-        arFitsColM=array([x[0] for x in fitsColM])-rowCenter
-        fill_hist(peaksHist, abs(arFitsColM))
-        fill_hist(dPeaksHist,diff(arFitsColM))
+        # arFitsColM=array([x[0] for x in fitsColM])-rowCenter
+        # fill_hist(peaksHist, abs(arFitsColM))
+        # fill_hist(dPeaksHist,diff(arFitsColM))
 
 # these peaks just fill one bin, at x.5, so I'll try fitting the slices to gaus at the peak positions, then fill with mean.
 # peaksHist.Draw()

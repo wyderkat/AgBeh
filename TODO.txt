@@ -9,3 +9,18 @@ So, for this my TODO is:
     * use function fitting to the peaks (probably a gausian) to get better estimate of centers and widths
     * refine the 1st order deriv portion that looks for the edges of the beamstop.
     * think about how to find the center of the beamstop, given only an approximate center coordinate to start with.
+
+
+NOTES:
+
+    the lower exposure images I got recently from the sfsu installation are very difficult to get anywhere with - 
+        the important peaks (those not near center )are typically small and in order to peak detect on them I have
+        to move the thresh low enough that I pick up noise too... Perhaps look into the sigma adjustment on the peak finder.
+
+    The center around the beamstop always looks like a peak and swamps any real agbeh peak we might have in there. It might be good to limit always (unless we know there is no beamstop) to get 50 to 70 pix away from center before we allow peaks to count. Maybe just use a default of 70 to end of detector.
+
+    The dPeaks is not working well with the lower intensity - lots of litle close together noise peaks. And when there's only one (or two, but one swamped by BStop), dPeaks doesn't really mean anything. Maybe we need to look at the peaks Hist more and do some analysis on that - 
+        smooth it, check the peak diffs in there?
+
+    more smoothing on the row and col clean up the noise peaks a bit, but of course we loose real peaks, so our data is more sparse...
+
