@@ -29,50 +29,46 @@ def rwBuf2Array(buf,bufLen):
 
 def fill_hist(th1,ar1):
     # fill a th1 from a 1d np array
-    print 'filling',ar1
+    # print 'filling',ar1
     for idx in range(len(ar1)):
         th1.Fill(ar1[idx])
 
 
-def fitGausPeaks(th,peaks):
+def fitGausPeaks(th,peaks,width=30):
     # th:    a tHist which we've done some peak fitting to, and we want to get gaussian fits to those peaks
     # peaks: an np array of the approx x coords of the peaks we want to fit.
     # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
 
     peaks.sort()
     # print peaks
-    dxP=diff(peaks)
+    # dxP=diff(peaks)
     # peaks: [ 231.5,  245.5,  260.5,  274.5,  288.5]
     # dxP:         [ 14.,    15.,    14.,    14.]
     fits=[]
-    y,x=setAr1DtoBins(th)
-    # print 'histo len: ',len(y),len(x)
-    if len(peaks)>1:
-        # print 'MORE THAN ONE'
-        for idx in range(len(peaks)):
-            
-            if idx==0:
-                dm=dxP[idx]/2.
-            else:
-                dm=dxP[idx-1]/2.
-            if idx==len(peaks)-1:
-                dp=dxP[idx-1]/2.
-            else:
-                dp=dxP[idx]/2.
-            # print y[peaks[idx]-dm:peaks[idx]+dp]
-            # fits.append(1)
-            print 'fit: low,high ',peaks[idx]-dm,peaks[idx]-dm
-            gf=th.Fit('gaus','QSNO','goff',peaks[idx]-dm,peaks[idx]-dm)
-            
-            # print 'MORE THAN ONE',type(gf)
-            # fits.append((gf.Value(0),gf.Value(1),gf.Value(2)))
-            fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
-    else:
-        # print 'JUST ONE'
-        # print y
-        gf=th.Fit('gaus','QSNO','goff')
+
+    # y,x=setAr1DtoBins(th)
+    nBins=th.GetNbinsX() #thists have nBins+2 bins - 0 is underflow and nBins+1 is overflow.
+    minBin=th.GetBinCenter(1)
+    maxBin=th.GetBinCenter(nBins)
+
+    for idx in range(len(peaks)):
         
+        # root doesn't seem to mind if we put fit limits outside of lowBin,highBin. So 
+        # we don't bother to check if we would overflow the range of the histo with our
+        # fit limits.
+        if peaks[idx]<minBin and peaks[idx] > maxBin:
+            print 'fitGausPeaks: ERROR ***************** peak outside of histogram range.'
+            print 'Histo name: ',th.GetName(),'\nHisto Title: ',th.GetTitle()
+            continue
+        # print 'fit: low,high ',peaks[idx]-width/2.,peaks[idx]+width/2.
+        gf=th.Fit('gaus','QSNO','goff',peaks[idx]-width/2.,peaks[idx]+width/2.)
+        # print 'did we fit?\t',gf
+        # if gf:
+            # print 'gf: ',gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)
         fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
+
+        
+
         
     return fits
 

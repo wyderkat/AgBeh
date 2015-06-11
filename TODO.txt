@@ -14,7 +14,7 @@ So, for this my TODO is:
 NOTES:
 
     the lower exposure images I got recently from the sfsu installation are very difficult to get anywhere with - 
-        the important peaks (those not near center )are typically small and in order to peak detect on them I have
+        the important peaks (those not near center ) are typically small and in order to peak detect on them I have
         to move the thresh low enough that I pick up noise too... Perhaps look into the sigma adjustment on the peak finder.
 
     The center around the beamstop always looks like a peak and swamps any real agbeh peak we might have in there. It might be good to limit always (unless we know there is no beamstop) to get 50 to 70 pix away from center before we allow peaks to count. Maybe just use a default of 70 to end of detector.
@@ -24,3 +24,7 @@ NOTES:
 
     more smoothing on the row and col clean up the noise peaks a bit, but of course we loose real peaks, so our data is more sparse...
 
+    maybe I can determine a good standard for a peak width to use for fitting gauss to the col/row vectors...
+        looks like 25 to 30 is pretty consistent.
+
+    For the dPeaksHist, need to find max, then fit gaus to that. We get sometimes bad diff values (double, tripple, etc).
