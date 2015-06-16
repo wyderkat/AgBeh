@@ -1393,18 +1393,20 @@ from npRootUtils import *
 from numpy import *
 
 # im0=retrieveImage('SFU/raw/latest_0000150_caz.tiff',makeU8=True,doLog=True)
-# im0=retrieveImage('SFU/raw/latest_0000150_caz.tiff',doLog=True)
-# im0=retrieveImage('SFU/raw/latest_0000141_caz.tiff',doLog=True)
+im0=retrieveImage('SFU/raw/latest_0000150_caz.tiff',doLog=True)
+# im0=retrieveImage('SFU/raw/latest_0000141_caz.tiff',doLog=True) # ~46.2
 # im0=retrieveImage('SFU/raw/latest_0000157_caz.tiff',doLog=True)
 onePeak=False#True
-im0=retrieveImage('SFU/raw/latest_0000166_caz.tiff',doLog=True)
+# im0=retrieveImage('SFU/raw/latest_0000138_caz.tiff',doLog=True) # ~23.3
+# im0=retrieveImage('SFU/raw/latest_0000166_caz.tiff',doLog=True) # ~235.6
+# im0=retrieveImage('SFU/raw/latest_0000155_caz.tiff',doLog=True) # ~151.9
 rowCenter=350
 colCenter=200
-pSize=700
-peakThresh=0.01
-firstPeak=60
+pSize=500
+peakThresh=0.005
+firstPeak=100
 lastPeak=pSize
-minDiff=20
+minDiff=10
 yM,xM=im0.shape
 peaksHist= TH1D('peaksHist','peaks',pSize*10,0,pSize)
 dPeaksHist=TH1D('dPeaksHist','dPeaks',pSize,0,pSize)
@@ -1430,13 +1432,14 @@ for x in range(xM):
         
 
 # imPolarHist.Draw()
-
+blur = cv2.GaussianBlur(imPolar,(5,5),0)
 
 sRow=TSpectrum()
 
 
-for rIdx in range(imPolar.shape[0]):
-    row=array(imPolar[rIdx,:],dtype=double).copy()
+for rIdx in range(blur.shape[0]):
+    # row=array(imPolar[rIdx,:],dtype=double).copy()
+    row=blur[rIdx,:]
     # row=imPolar[0,:]
     # row[0:row.argmax()]=row.max()
     sRow.SmoothMarkov(row,len(row),smoothingWindow)
@@ -1488,7 +1491,7 @@ print aPeaks
 fitsPeaks=fitGausPeaks(peaksHist,aPeaks)
 
 print fitsPeaks
-if onePeak:#len(aPeaks)==1:
+if len(aPeaks)==1:
     # (mean,sigma,errMean,errSig)
     nFound = sRow.Search(peaksHist,3.5,'',0.75)
     xsPeaks=sRow.GetPositionX()
