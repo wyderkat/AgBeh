@@ -1393,9 +1393,9 @@ from npRootUtils import *
 from numpy import *
 
 # im0=retrieveImage('SFU/raw/latest_0000150_caz.tiff',makeU8=True,doLog=True)
-im0=retrieveImage('SFU/raw/latest_0000150_caz.tiff',doLog=True)
+im0=retrieveImage('SFU/raw/latest_0000154_caz.tiff',doLog=True) # a bad gauss fit to peakshist in the end gives a wrong peak
 # im0=retrieveImage('SFU/raw/latest_0000141_caz.tiff',doLog=True) # ~46.2
-# im0=retrieveImage('SFU/raw/latest_0000157_caz.tiff',doLog=True)
+# im0=retrieveImage('SFU/raw/latest_0000163_caz.tiff',doLog=True) #difficult
 onePeak=False#True
 # im0=retrieveImage('SFU/raw/latest_0000138_caz.tiff',doLog=True) # ~23.3
 # im0=retrieveImage('SFU/raw/latest_0000166_caz.tiff',doLog=True) # ~235.6
@@ -1418,7 +1418,7 @@ imPolar=zeros((pSize+1,pSize+1))
 yM,xM=im0.shape
 vP=TVector2()
 # smoothingWindow=5, peakThresh=.01 works ok
-smoothingWindow=7
+smoothingWindow=5
 for x in range(xM):
     for y in range(yM):
         vP.SetX(x-colCenter)
@@ -1481,22 +1481,22 @@ dSigEr=gf.Error(2)
 tc.cd(2)
 # this gets the peaks array out at the end
 peaksHist.Smooth()
-nFound = sRow.Search(peaksHist,3.5,'',0.25)
+nFound = sRow.Search(peaksHist,3.5,'',0.1)
 peaksHist.Draw()
 xsPeaks=sRow.GetPositionX()
 aPeaks=rwBuf2Array(xsPeaks,nFound)
 aPeaks=aPeaks[aPeaks>=firstPeak]
 aPeaks=aPeaks[aPeaks <= lastPeak]
 print aPeaks
-fitsPeaks=fitGausPeaks(peaksHist,aPeaks)
+fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
 
 print fitsPeaks
 if len(aPeaks)==1:
     # (mean,sigma,errMean,errSig)
-    nFound = sRow.Search(peaksHist,3.5,'',0.75)
+    nFound = sRow.Search(peaksHist,3.5,'',0.1)
     xsPeaks=sRow.GetPositionX()
     aPeaks=rwBuf2Array(xsPeaks,nFound)
-    fitsPeaks=fitGausPeaks(peaksHist,aPeaks)
+    fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
     dMean=fitsPeaks[0][0]
     dMeanEr=fitsPeaks[0][2]
     dSig=fitsPeaks[0][1]
