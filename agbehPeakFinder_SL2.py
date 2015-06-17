@@ -22,7 +22,7 @@ from pilatus_np import JJTiff
 # firstPeak=100
 # lastPeak=pSize
 # minDiff=10
-def findPeaks(image,center,peakThresh=0.005,verbose=False,doLogIm=True,pSize=360,firstPeak=70,lastPeak=None,smoothingWindow=5,minDiff=10):
+def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,firstPeak=50,lastPeak=None,smoothingWindow=5,minDiff=10):
     """
 
     findPeaks(center,image,rad)
@@ -65,16 +65,16 @@ def findPeaks(image,center,peakThresh=0.005,verbose=False,doLogIm=True,pSize=360
             image=retrieveImage(image,doLog=doLogIm)
 
         im0=image
-
+        rSize=500
         if not lastPeak:
-            lastPeak=int(pSize)
+            lastPeak=int(rSize)
         else:
             lastPeak=int(lastPeak)
         rowCenter=int(center[0])# 350
         colCenter=int(center[1])# 200
         peakThresh=float(peakThresh)
         pSize=int(pSize)
-        rSize=500
+        
         firstPeak=int(firstPeak)
         smoothingWindow=int(smoothingWindow)
         minDiff=int(minDiff)
@@ -162,19 +162,27 @@ def findPeaks(image,center,peakThresh=0.005,verbose=False,doLogIm=True,pSize=360
 
         # print fitsPeaks
         if len(aPeaks)==1:
+            print 'One Peak ++++++'
             # (mean,sigma,errMean,errSig)
             nFound = sRow.Search(peaksHist,3.5,'goff',0.1)
             xsPeaks=sRow.GetPositionX()
             aPeaks=rwBuf2Array(xsPeaks,nFound)
+            aPeaks=aPeaks[aPeaks>=firstPeak]
+            aPeaks=aPeaks[aPeaks <= lastPeak]
             fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
-            dMean=fitsPeaks[0][0]
-            dMeanEr=fitsPeaks[0][2]
-            dSig=fitsPeaks[0][1]
-            dSigEr=fitsPeaks[0][3]
+            # print fitsPeaks
+            # fitsPeaks=fitsPeaks[fitsPeaks>=firstPeak]
+            # fitsPeaks=fitsPeaks[fitsPeaks<=lastPeak]
+            # print fitsPeaks
+            idx=len(fitsPeaks)-1
+            dMean=fitsPeaks[idx][0]
+            dMeanEr=fitsPeaks[idx][2]
+            dSig=fitsPeaks[idx][1]
+            dSigEr=fitsPeaks[idx][3]
         if verbose:
             print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
                 
-        return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,imPolar,im0)
+        return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur,im0)
     except Exception, e:
         print e
         return None  

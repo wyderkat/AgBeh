@@ -32,10 +32,11 @@ def main(argv=sys.argv):
             imPolar=colorize(pX[5])
             print fn
             print p
-            cv2.rectangle(im0,(x,y),(x,y),(0,0,255),-1)
+            cv2.rectangle(im0,(x,y),(x,y),(0,255,70),-1)
             circs=[c[0] for c in p[4]]
             for c in circs:
-                cv2.circle(im0,(x,y),int(c),(0,0,255),1)
+                if c>0:
+                    cv2.circle(im0,(x,y),int(round(c)),(0,255,70),1)
             cv2.imshow('Pol', imPolar)
             cv2.imshow('Log', im0)
         else:
