@@ -29,17 +29,17 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
 
     Take a saxslab tiff of AgBeh, and return peak spacing, and an array of found peak coordinates (radius from center).
 
-    Peaks in the range (rad[0]:rad[1]) are found by taking slices through the given center coordinate 
-    of the tiff at several rotation agles, and searching for peaks within rad[0]:rad[1]. Then each peak in a slice from
-    the pervious step is separately fit to a gaussian curve, and the mean from each fit is added into a histogram.
+    Peaks in the radial range (firstPeak:lastPeak) are found by first unrolling the image into polar coordinates. We then
+    iterate down the image by rows and do a rough peak search on each row. The peak coordinates from this search are then
+    fed to a function that separately fits a small range of the row, centered on each peak coordinate, to a gaussian
+    curve, and the mean from each fit is added into a histogram. This process is repeated for each row in polar space.
 
-    Also, the spacing between all the peaks in a slice is added to a histogram of peak spacings. This is all
-    repeated for each rotation.
+    Also, the spacing between all the peaks in a row is added to a histogram of peak spacings.
 
     At the end, we have a histogram of peak locations and a histogram of peak spacings. The peak spacing
     histogram is fit to a gaussian, and the mean, sigma, and error are returned.
 
-    Further, the histogram of peak locations is treated similarly to a slice in the first step, and it's peaks
+    Further, the histogram of peak locations is treated similarly to a row in the first step, and it's peaks
     are again fit to gaussians, and the mean, sigma, and error of each are stored in a list of tuples in the output.
 
      input

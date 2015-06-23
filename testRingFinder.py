@@ -25,7 +25,8 @@ def main(argv=sys.argv):
     # hus=[]
     while 1:
         # hus.append(main(fn))
-        pX=findPeaks(fn,center)
+        pX=findPeaks(fn,center,firstPeak=20,verbose=True)
+        # pX=findPeaks(fn,center,verbose=True)
         if pX:
             p=pX[0:5]
             im0=colorize(pX[6] )
@@ -105,4 +106,4 @@ if __name__ == '__main__':
     main()
 
     
-cv2.namedWindow('rot')
+
