@@ -25,8 +25,8 @@ def main(argv=sys.argv):
     # hus=[]
     while 1:
         # hus.append(main(fn))
-        pX=findPeaks(fn,center,firstPeak=20,verbose=True)
-        # pX=findPeaks(fn,center,verbose=True)
+        # pX=findPeaks(fn,center,firstPeak=20,verbose=True)
+        pX=findPeaks(fn,center,verbose=True)
         if pX:
             p=pX[0:5]
             im0=colorize(pX[6] )

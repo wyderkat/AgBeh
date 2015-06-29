@@ -22,6 +22,19 @@ def makeTH1DFromAr1D(ar,name='array',title='title',xlow=0,xup=None):
     tHist=TH1D(name,title,nbinsx,xlow,xup)
     setBinsToAr1D(tHist,ar)
     return tHist
+def makeTH2DFromAr2D(ar,name='array',title='title',xlow=0,xup=None,ylow=0,yup=None):
+    # TH2D(const char* name, const char* title, Int_t nbinsx, Double_t xlow, Double_t xup, Int_t nbinsy, Double_t ylow, Double_t yup)
+    nbinsy,nbinsx=ar.shape
+
+    # ar.shape -> (y,x) for our th2
+    if not xup:
+        xup=nbinsx
+    if not yup:
+        yup=nbinsy
+
+    tHist=TH2D(name,title,nbinsx,xlow,xup,nbinsy,ylow,yup)
+    setBinsToAr2D(tHist,ar)
+    return tHist
 
 def rwBuf2Array(buf,bufLen):
     al=[buf[idx] for idx in range(bufLen)]

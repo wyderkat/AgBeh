@@ -22,7 +22,7 @@ from pilatus_np import JJTiff
 # firstPeak=100
 # lastPeak=pSize
 # minDiff=10
-def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,firstPeak=50,lastPeak=None,smoothingWindow=5,minDiff=10):
+def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,firstPeak=20,lastPeak=None,smoothingWindow=5,minDiff=20,difThresh=70,maxNPeaks=5):
     """
 
     findPeaks(center,image,rad)
@@ -43,10 +43,33 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
     are again fit to gaussians, and the mean, sigma, and error of each are stored in a list of tuples in the output.
 
      input
-     center:       tuple or list -> (rowCenter,colCenter), where rowCenter is the coord in pix of the center row.
+     image:         A path to a saxslab tiff, or an np array of a saxslab tiff.
+    
+     center:        tuple or list -> (rowCenter,colCenter), where rowCenter is the coord in pix of the center row.
                                                    colCenter is defined the same way, but for center col.
-     image:        A path to a saxslab tiff, or an np array of a saxslab tiff.
-     rad:          tuple or list -> (minRadius, maxRadius) in which to search for peaks.
+     peakThresh:    Parameter used for peak finding. This is the min acceptable ratio of a peak's height to the height
+                    of the largest peak, in order to be counted as a peak by the peak finder.
+
+     verbose        Control the level of output from this function. Setting this to false will cause the function to
+                    spress any output to the screen.
+
+     doLogIm:       Whether or not to work with the log of the input image.
+
+     pSize:         How many lines in the phi direction will we use in polar space?
+
+     firstPeak:     Min radius of a peak to be considered in the calculations.
+
+     lastPeak:      Max radius of a peak to be considered in the calculations. Set to None go all the way out to edge of
+                    image.
+
+     smoothingWindow: How many pixels to use in the smoothing algorithm.
+
+     minDiff:       Min distance of neighboring peaks to consider in the peak spacing calculations.
+
+     difThresh:     Threshold of ave peak distances. If the ave is above this, then we auto-adjust firstPeak=50 in
+                    order to avoid false peaks near the beamstop.
+
+     maxNPeaks:     How many peaks out from the center to we use (default is 5).
      
      output
      tuple:        (peakSpacing, peakSpacingSigma, peakSpacingErr, peaksList)
@@ -70,8 +93,8 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
             lastPeak=int(rSize)
         else:
             lastPeak=int(lastPeak)
-        rowCenter=int(center[0])# 350
-        colCenter=int(center[1])# 200
+        rowCenter=float(center[0])# 350
+        colCenter=float(center[1])# 200
         peakThresh=float(peakThresh)
         pSize=int(pSize)
         
@@ -98,20 +121,41 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
                 # p=1327./(2*pi)*p
                 # imPolarHist.Fill(r,p,im0[y,x])
                 # print p,r
-                imPolar[round(p),round(r)]=im0[y,x]
+                imPolar[round(p),round(r)]+=im0[y,x]
                 
 
-        # imPolarHist.Draw()
-        blur = cv2.GaussianBlur(imPolar,(5,5),0)
+        # run a gaus filter over the polar image to blend in the rough spots
+        blur = cv2.GaussianBlur(imPolar,(3,3),0)
 
         sRow=TSpectrum()
 
+        # check the first row to see if we are far enough away from source that
+        # the beamstop halo would give us a false peak near the center, and adjust firstPeak
+        # to compensate if needed. Might want to parameterise the default setting to adjust to
+        # instead of hard coded to 50....
+        row=blur[0,:]
+        sRow.SmoothMarkov(row,len(row),smoothingWindow)
+        setBinsToAr1D(rowHist,row)
+        nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh)
+        xsRow=sRow.GetPositionX()
+        axRow=rwBuf2Array(xsRow,nFoundRow)
+        axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
+        fitsRow=fitGausPeaks(rowHist,axRow)
+        
+        arFitsRow=array([x[0] for x in fitsRow])
+        arDiff=diff(arFitsRow)
+        if mean(arDiff)>difThresh:
+            firstPeak=50
+            axRow=rwBuf2Array(xsRow,nFoundRow)
+            axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
+        fitsRow=fitGausPeaks(rowHist,axRow)
+        arFitsRow=array([x[0] for x in fitsRow])
+        fill_hist(peaksHist, arFitsRow)
 
-        for rIdx in range(blur.shape[0]):
-            # row=array(imPolar[rIdx,:],dtype=double).copy()
+        for rIdx in range(blur.shape[0])[1:]:
+            
             row=blur[rIdx,:]
-            # row=imPolar[0,:]
-            # row[0:row.argmax()]=row.max()
+
             sRow.SmoothMarkov(row,len(row),smoothingWindow)
             setBinsToAr1D(rowHist,row)
             nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh)
@@ -122,17 +166,10 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
             fitsRow=fitGausPeaks(rowHist,axRow)
             
             arFitsRow=array([x[0] for x in fitsRow])
-            # print 'arFitsRow ',arFitsRow
-            # # arFitsRow[0]=0
-            # # if len(arFitsRow)>1:
-
-            # if arFitsRow[0]<firstPeak:
-            #     arFitsRow=arFitsRow[1:]
-            #     print 'arFitsRow now: ',arFitsRow
+            arFitsRow.sort()
             arDiff=diff(arFitsRow)
-            # print 'before: ',arDiff
             arDiff=array([x for x in arDiff if x>=minDiff])
-            # print 'after: ',arDiff
+
             fill_hist(peaksHist, arFitsRow)
             fill_hist(dPeaksHist,arDiff)
 
@@ -140,26 +177,48 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
         # tc=TCanvas()
         # tc.Divide(1,2)
         # tc.cd(1)
-        # dPeaksHist.Draw()
+
+        # Might want to smooth this - otherwise good.
+        dPeaksHist.Draw()
         dPmaxBin=dPeaksHist.GetMaximumBin()
         dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
-        gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-5,dPmax+5)
+        # gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-2,dPmax+2)
+        gf=dPeaksHist.Fit('gaus','QS','',dPmax-10,dPmax+10)
         dMean=gf.Value(1)
         dMeanEr=gf.Error(1)
         dSig=gf.Value(2)
         dSigEr=gf.Error(2)
+        dPeaksHist.Draw()
         # tc.cd(2)
         # this gets the peaks array out at the end
-        peaksHist.Smooth()
-        nFound = sRow.Search(peaksHist,3.5,'goff',0.1)
+
+        peaksHistAr=setAr1DtoBins(peaksHist)
+        sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+        setBinsToAr1D(peaksHist,peaksHistAr[0])
+        # peaksHist.Smooth(3)
+        # nFound = sRow.Search(peaksHist,3.5,'goff',0.05)
+        nFound = sRow.Search(peaksHist,3.5,'',0.05)
+        
         # peaksHist.Draw()
         xsPeaks=sRow.GetPositionX()
         aPeaks=rwBuf2Array(xsPeaks,nFound)
-        aPeaks=aPeaks[aPeaks>=firstPeak]
+        # fitsRow=fitGausPeaks(rowHist,axRow)
+        # print aPeaks
+        aPeaks=aPeaks[aPeaks>=firstPeak]   
+        # print aPeaks 
         aPeaks=aPeaks[aPeaks <= lastPeak]
         # print aPeaks
+        # print aPeaks
+        aPeaks.sort()
+        dPeaks=diff(aPeaks)
+        print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
         fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
-
+        # arFitsPeaks=array([x[0] for x in fitsPeaks])
+        # arDiff=diff(arFitsPeaks)
+        # dMean=mean(arDiff)
+        # dSig=std(arDiff)
+        # dSigEr=0.0
+        # dMeanEr=0.0
         # print fitsPeaks
         if len(aPeaks)==1:
             print 'One Peak ++++++'
@@ -179,6 +238,7 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
             dMeanEr=fitsPeaks[idx][2]
             dSig=fitsPeaks[idx][1]
             dSigEr=fitsPeaks[idx][3]
+
         if verbose:
             print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
                 
