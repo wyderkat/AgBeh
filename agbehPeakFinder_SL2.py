@@ -140,18 +140,36 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
         xsRow=sRow.GetPositionX()
         axRow=rwBuf2Array(xsRow,nFoundRow)
         axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
+        sort(axRow)
+        # if len(axRow)>maxNPeaks:
+        #     axRow=axRow[0:maxNPeaks]
         fitsRow=fitGausPeaks(rowHist,axRow)
         
         arFitsRow=array([x[0] for x in fitsRow])
+        # print arFitsRow
         arDiff=diff(arFitsRow)
         if mean(arDiff)>difThresh:
             firstPeak=50
+            print '+++++++++++++++++== set to 50\n'
             axRow=rwBuf2Array(xsRow,nFoundRow)
             axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
-        fitsRow=fitGausPeaks(rowHist,axRow)
-        arFitsRow=array([x[0] for x in fitsRow])
+            sort(axRow)
+            # if len(axRow)>maxNPeaks:
+            #     axRow=axRow[0:maxNPeaks]
+            fitsRow=fitGausPeaks(rowHist,axRow)
+            arFitsRow=array([x[0] for x in fitsRow])
+            arDiff=diff(arFitsRow)
         fill_hist(peaksHist, arFitsRow)
-
+        fill_hist(dPeaksHist,arDiff)
+        dPmaxBin=dPeaksHist.GetMaximumBin()
+        dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
+        if dPmax<1: #one
+                lastPeak=int(rSize)
+        else:
+            # print dPmax,(dPmax+1)*maxNPeaks,':'
+            lastPeak=(dPmax+1)*maxNPeaks
+        # lastPeak=(dPmax+1)*maxNPeaks
+        # now that we have decided whether to change firstPeak or not, do the rest of the rows.
         for rIdx in range(blur.shape[0])[1:]:
             
             row=blur[rIdx,:]
@@ -163,43 +181,59 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
             axRow=rwBuf2Array(xsRow,nFoundRow)
             # axRow[0]=0.0
             axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
+            sort(axRow)
+            # if len(axRow)>maxNPeaks:
+            #     axRow=axRow[0:maxNPeaks]
             fitsRow=fitGausPeaks(rowHist,axRow)
             
-            arFitsRow=array([x[0] for x in fitsRow])
+            arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
             arFitsRow.sort()
             arDiff=diff(arFitsRow)
             arDiff=array([x for x in arDiff if x>=minDiff])
-
+            # print 'axRow: ',len(axRow), 'maxNPeaks: ',maxNPeaks
             fill_hist(peaksHist, arFitsRow)
             fill_hist(dPeaksHist,arDiff)
+            dPmaxBin=dPeaksHist.GetMaximumBin()
+            dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
+            # print dPmax
+            # print dPeaksHist.GetStdDev()
+            if dPmax<minDiff or firstPeak==50: #one
+                lastPeak=int(rSize)
+            else:
+                # print dPmax,(dPmax+1)*maxNPeaks,':'
+                lastPeak=(dPmax)*maxNPeaks+dPmax/2.0
+            # print lastPeak
 
 
         # tc=TCanvas()
         # tc.Divide(1,2)
         # tc.cd(1)
-
+        # gPad.Divide(1,2)
+        # gPad.cd(1)
         # Might want to smooth this - otherwise good.
-        dPeaksHist.Draw()
+        # dPeaksHist.Draw()
         dPmaxBin=dPeaksHist.GetMaximumBin()
         dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
-        # gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-2,dPmax+2)
-        gf=dPeaksHist.Fit('gaus','QS','',dPmax-10,dPmax+10)
+        gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
+        # gf=dPeaksHist.Fit('gaus','QS','',dPmax-10,dPmax+10)
         dMean=gf.Value(1)
         dMeanEr=gf.Error(1)
         dSig=gf.Value(2)
         dSigEr=gf.Error(2)
-        dPeaksHist.Draw()
+        # dPeaksHist.Draw()
         # tc.cd(2)
+        # gPad.cd(2)
         # this gets the peaks array out at the end
 
         peaksHistAr=setAr1DtoBins(peaksHist)
         sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+        # sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
         setBinsToAr1D(peaksHist,peaksHistAr[0])
         # peaksHist.Smooth(3)
         # nFound = sRow.Search(peaksHist,3.5,'goff',0.05)
-        nFound = sRow.Search(peaksHist,3.5,'',0.05)
+        nFound = sRow.Search(peaksHist,3.5,'',0.025)
         
-        # peaksHist.Draw()
+        peaksHist.Draw()
         xsPeaks=sRow.GetPositionX()
         aPeaks=rwBuf2Array(xsPeaks,nFound)
         # fitsRow=fitGausPeaks(rowHist,axRow)
@@ -210,9 +244,13 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
         # print aPeaks
         # print aPeaks
         aPeaks.sort()
-        dPeaks=diff(aPeaks)
-        print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
-        fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
+        print std(diff(aPeaks)), len(aPeaks),aPeaks
+        if len(aPeaks)>maxNPeaks:
+            aPeaks=aPeaks[0:maxNPeaks]
+        if len(aPeaks)>1 and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
+            dPeaks=diff(aPeaks)
+            print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
+            fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
         # arFitsPeaks=array([x[0] for x in fitsPeaks])
         # arDiff=diff(arFitsPeaks)
         # dMean=mean(arDiff)
@@ -220,25 +258,45 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=360,
         # dSigEr=0.0
         # dMeanEr=0.0
         # print fitsPeaks
-        if len(aPeaks)==1:
+        # if len(aPeaks)==1:
+        else:
             print 'One Peak ++++++'
             # (mean,sigma,errMean,errSig)
-            nFound = sRow.Search(peaksHist,3.5,'goff',0.1)
-            xsPeaks=sRow.GetPositionX()
-            aPeaks=rwBuf2Array(xsPeaks,nFound)
-            aPeaks=aPeaks[aPeaks>=firstPeak]
-            aPeaks=aPeaks[aPeaks <= lastPeak]
+            # print peaksHistAr
+            peaksHistAr=setAr1DtoBins(peaksHist)
+            sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+            sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+            setBinsToAr1D(peaksHist,peaksHistAr[0])
+            pMaxBin=peaksHist.GetMaximumBin()
+            pMax=peaksHist.GetBinCenter(pMaxBin)
+            # nFound = sRow.Search(peaksHist,3.5,'',0.5)
+            # xsPeaks=sRow.GetPositionX()
+            # aPeaks=rwBuf2Array(xsPeaks,nFound)
+            gf=peaksHist.Fit('gaus','QS','',pMax-5,pMax+5)
+        # gf=dPeaksHist.Fit('gaus','QS','',dPmax-10,dPmax+10)
+            dMean=gf.Value(1)
+            dMeanEr=gf.Error(1)
+            dSig=gf.Value(2)
+            dSigEr=gf.Error(2)
+                # print aPeaks
+            # aPeaks=aPeaks[aPeaks>=firstPeak]
+            # # aPeaks=aPeaks[aPeaks <= lastPeak]
+            # print aPeaks
+            aPeaks=zeros(1)
+            aPeaks[0]=pMax
             fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
+            # print fitsPeaks,
+            # Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
             # print fitsPeaks
             # fitsPeaks=fitsPeaks[fitsPeaks>=firstPeak]
             # fitsPeaks=fitsPeaks[fitsPeaks<=lastPeak]
             # print fitsPeaks
-            idx=len(fitsPeaks)-1
-            dMean=fitsPeaks[idx][0]
-            dMeanEr=fitsPeaks[idx][2]
-            dSig=fitsPeaks[idx][1]
-            dSigEr=fitsPeaks[idx][3]
-
+            # idx=len(fitsPeaks)-1
+            # dMean=fitsPeaks[idx][0]
+            # dMeanEr=fitsPeaks[idx][2]
+            # dSig=fitsPeaks[idx][1]
+            # dSigEr=fitsPeaks[idx][3]
+        # peaksHist.Draw()
         if verbose:
             print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
                 
