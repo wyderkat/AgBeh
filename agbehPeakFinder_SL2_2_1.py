@@ -207,7 +207,7 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         # get the gauss fits and filter out the unique peaks
         fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
         fitsPeaks=[x[0] for x in fitsPeaks]
-        fitsPeaks=unique(fitsPeaks)
+        fitsPeaks=unique(fitsPeaks)[0:maxNPeaks]
 
         # let's figure out if there is some false peak we are seeing near the beam center.
             # -- don't seem to need it naymore...
@@ -218,7 +218,7 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
             
             row=blur[rIdx,:]
             setBinsToAr1D(rowHist,row)
-            fitsRow=fitGausPeaks(rowHist,fitsPeaks[0:maxNPeaks])
+            fitsRow=fitGausPeaks(rowHist,fitsPeaks)
             
             arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
             arFitsRow.sort()
@@ -278,13 +278,17 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         # print 'aPeaks',aPeaks
         if len(aPeaks)>1:# and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
             dPeaks=diff(aPeaks)
+            # if verbose:
+            #     print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
+            # print 'before fit, fitsPeaks: ',fitsPeaks
+            fitsPeaks=fitGausPeaks(peaksHist,fitsPeaks,width=10)#,showFits=True)
             if verbose:
                 print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
-            fitsPeaks=fitGausPeaks(peaksHist,fitsPeaks,width=10)
+                # print 'len fitsPeaks',len(fitsPeaks),aPeaks
             dPmaxBin=dPeaksHist.GetMaximumBin()
             dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
             # gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
-            gf=dPeaksHist.Fit('gaus','QSNO','',dPmax-10,dPmax+10)
+            gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
             dMean=gf.Value(1)
             dMeanEr=gf.Error(1)
             dSig=gf.Value(2)

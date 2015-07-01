@@ -7,6 +7,7 @@ import os
 from agbehPeakFinder_SL2_2_1 import *
 from numpy import *
 
+
 def main(argv=sys.argv):
 
     cv2.namedWindow('Pol')
@@ -26,7 +27,7 @@ def main(argv=sys.argv):
     while 1:
         # hus.append(main(fn))
         # pX=findPeaks(fn,center,firstPeak=20,verbose=True)
-        pX=findPeaks(fn,center,verbose=True,maxNPeaks=7)#,pSize=360)
+        pX=findPeaks(fn,center,verbose=True,maxNPeaks=5)#,pSize=360)
         if pX:
             p=pX[0:5]
             im0=colorize(pX[6] )
