@@ -22,7 +22,7 @@ from pilatus_np import JJTiff
 # firstPeak=100
 # lastPeak=pSize
 # minDiff=10
-def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=180,firstPeak=20,lastPeak=None,smoothingWindow=9,minDiff=20,difThresh=70,maxNPeaks=5):
+def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,firstPeak=20,lastPeak=None,smoothingWindow=13,minDiff=20,difThresh=70,maxNPeaks=5):
     """
 
     findPeaks(center,image,rad)
@@ -103,6 +103,7 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=180,
         minDiff=int(minDiff)
         yM,xM=im0.shape
         peaksHist= TH1D('peaksHist','peaks',rSize*10,0,rSize)
+        prePeaksHist= TH1D('prePeaksHist','prePeaksHisteaks',rSize*10,0,rSize)
         dPeaksHist=TH1D('dPeaksHist','dPeaks',rSize,0,rSize)
         rowHist=TH1D('rowHist','row',rSize,0,rSize)
             # TH2D(const char* name, const char* title, Int_t nbinsx, Double_t xlow, Double_t xup, Int_t nbinsy, Double_t ylow, Double_t yup)
@@ -133,45 +134,45 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=180,
         # the beamstop halo would give us a false peak near the center, and adjust firstPeak
         # to compensate if needed. Might want to parameterise the default setting to adjust to
         # instead of hard coded to 50....
-        row=blur[0,:]
-        sRow.SmoothMarkov(row,len(row),smoothingWindow)
-        setBinsToAr1D(rowHist,row)
-        nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh)
-        xsRow=sRow.GetPositionX()
-        axRow=rwBuf2Array(xsRow,nFoundRow)
-        axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
-        sort(axRow)
-        # if len(axRow)>maxNPeaks:
-        #     axRow=axRow[0:maxNPeaks]
-        fitsRow=fitGausPeaks(rowHist,axRow)
+        # row=blur[0,:]
+        # sRow.SmoothMarkov(row,len(row),smoothingWindow)
+        # setBinsToAr1D(rowHist,row)
+        # nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh)
+        # xsRow=sRow.GetPositionX()
+        # axRow=rwBuf2Array(xsRow,nFoundRow)
+        # axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
+        # sort(axRow)
+        # # if len(axRow)>maxNPeaks:
+        # #     axRow=axRow[0:maxNPeaks]
+        # fitsRow=fitGausPeaks(rowHist,axRow)
         
-        arFitsRow=array([x[0] for x in fitsRow])
-        # print arFitsRow
-        arDiff=diff(arFitsRow)
-        print 'arDiff,mean,std: ',arDiff,mean(arDiff),std(arDiff)
-        if mean(arDiff)>difThresh:
-            firstPeak=50
-            print '+++++++++++++++++== set to 50\n'
-            axRow=rwBuf2Array(xsRow,nFoundRow)
-            axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
-            sort(axRow)
-            # if len(axRow)>maxNPeaks:
-            #     axRow=axRow[0:maxNPeaks]
-            fitsRow=fitGausPeaks(rowHist,axRow)
-            arFitsRow=array([x[0] for x in fitsRow])
-            arDiff=diff(arFitsRow)
-        fill_hist(peaksHist, arFitsRow)
-        fill_hist(dPeaksHist,arDiff)
-        dPmaxBin=dPeaksHist.GetMaximumBin()
-        dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
-        if dPmax<1: #one
-                lastPeak=int(rSize)
-        else:
-            # print dPmax,(dPmax+1)*maxNPeaks,':'
-            lastPeak=(dPmax+1)*maxNPeaks
+        # arFitsRow=array([x[0] for x in fitsRow])
+        # # print arFitsRow
+        # arDiff=diff(arFitsRow)
+        # print 'arDiff,mean,std: ',arDiff,mean(arDiff),std(arDiff)
+        # if mean(arDiff)>difThresh:
+        #     firstPeak=50
+        #     print '+++++++++++++++++== set to 50\n'
+        #     axRow=rwBuf2Array(xsRow,nFoundRow)
+        #     axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
+        #     sort(axRow)
+        #     # if len(axRow)>maxNPeaks:
+        #     #     axRow=axRow[0:maxNPeaks]
+        #     fitsRow=fitGausPeaks(rowHist,axRow)
+        #     arFitsRow=array([x[0] for x in fitsRow])
+        #     arDiff=diff(arFitsRow)
+        # fill_hist(peaksHist, arFitsRow)
+        # fill_hist(dPeaksHist,arDiff)
+        # dPmaxBin=dPeaksHist.GetMaximumBin()
+        # dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
+        # if dPmax<1: #one
+        #         lastPeak=int(rSize)
+        # else:
+        #     # print dPmax,(dPmax+1)*maxNPeaks,':'
+        #     lastPeak=(dPmax+1)*maxNPeaks
         # lastPeak=(dPmax+1)*maxNPeaks
         # now that we have decided whether to change firstPeak or not, do the rest of the rows.
-        for rIdx in range(blur.shape[0])[1:]:
+        for rIdx in range(blur.shape[0]):#[1:]:
             
             row=blur[rIdx,:]
 
@@ -182,10 +183,42 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=180,
             axRow=rwBuf2Array(xsRow,nFoundRow)
             # axRow[0]=0.0
             axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
-            sort(axRow)
-            # if len(axRow)>maxNPeaks:
-            #     axRow=axRow[0:maxNPeaks]
-            fitsRow=fitGausPeaks(rowHist,axRow)
+            fill_hist(prePeaksHist, axRow)
+
+            # print lastPeak
+        # now go through and do gauss fits on the rows, using the first maxNPeaks for our center param
+        # but we need to make sure that we don't have false+ in the center < 50 
+        
+        # this seems to clean out the noise in the center...
+        peaksHistAr=setAr1DtoBins(prePeaksHist)
+        sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+        sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+        setBinsToAr1D(prePeaksHist,peaksHistAr[0])
+
+        # look for peaks and get the gauss fits - we use this instead of the peaks found from sRow.Search
+        # bacause sRow.Search can sometimes return multiple peaks that are very close to gether. If we do guass
+        # fits on two close together peaks, we should find the same center for both, and we can then filter them out.
+
+        nFound = sRow.Search(prePeaksHist,0.33,'goff',0.025)
+        # prePeaksHist.Draw()
+        xsPeaks=sRow.GetPositionX()
+        aPeaks=rwBuf2Array(xsPeaks,nFound)
+
+        # get the gauss fits and filter out the unique peaks
+        fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
+        fitsPeaks=[x[0] for x in fitsPeaks]
+        fitsPeaks=unique(fitsPeaks)
+
+        # let's figure out if there is some false peak we are seeing near the beam center.
+            # -- don't seem to need it naymore...
+        
+
+        # now iterate again, and just fit each row to the set of peaks we found above
+        for rIdx in range(blur.shape[0]):#[1:]:
+            
+            row=blur[rIdx,:]
+            setBinsToAr1D(rowHist,row)
+            fitsRow=fitGausPeaks(rowHist,fitsPeaks[0:maxNPeaks])
             
             arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
             arFitsRow.sort()
@@ -194,17 +227,8 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=180,
             # print 'axRow: ',len(axRow), 'maxNPeaks: ',maxNPeaks
             fill_hist(peaksHist, arFitsRow)
             fill_hist(dPeaksHist,arDiff)
-            dPmaxBin=dPeaksHist.GetMaximumBin()
-            dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
-            # print dPmax
-            # print dPeaksHist.GetStdDev()
-            if dPmax<minDiff or firstPeak==50: #one
-                lastPeak=int(rSize)
-            else:
-                # print dPmax,(dPmax+1)*maxNPeaks,':'
-                lastPeak=(dPmax)*maxNPeaks+dPmax/2.0
-            # print lastPeak
-
+            
+        print 'out of second iter'
 
         # tc=TCanvas()
         # tc.Divide(1,2)
@@ -213,14 +237,15 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=180,
         # gPad.cd(1)
         # Might want to smooth this - otherwise good.
         # dPeaksHist.Draw()
-        dPmaxBin=dPeaksHist.GetMaximumBin()
-        dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
-        gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
+        # dPmaxBin=dPeaksHist.GetMaximumBin()
+        # dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
+        # # gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
         # gf=dPeaksHist.Fit('gaus','QS','',dPmax-10,dPmax+10)
-        dMean=gf.Value(1)
-        dMeanEr=gf.Error(1)
-        dSig=gf.Value(2)
-        dSigEr=gf.Error(2)
+        # dMean=gf.Value(1)
+        # dMeanEr=gf.Error(1)
+        # dSig=gf.Value(2)
+        # dSigEr=gf.Error(2)
+        # print 'fit the dPeaksHist'
         # dPeaksHist.Draw()
         # tc.cd(2)
         # gPad.cd(2)
@@ -230,28 +255,42 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=180,
         sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
         # sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
         setBinsToAr1D(peaksHist,peaksHistAr[0])
-        # peaksHist.Smooth(3)
+
+
+        # peaksHist.Smooth()
         # nFound = sRow.Search(peaksHist,3.5,'goff',0.05)
-        nFound = sRow.Search(peaksHist,2,'',0.025)
+        nFound = sRow.Search(peaksHist,0.33,'goff',0.025)
         
-        peaksHist.Draw()
+        # peaksHist.Draw()
         xsPeaks=sRow.GetPositionX()
         aPeaks=rwBuf2Array(xsPeaks,nFound)
-        # fitsRow=fitGausPeaks(rowHist,axRow)
-        # print aPeaks
-        aPeaks=aPeaks[aPeaks>=firstPeak]   
-        # print aPeaks 
-        aPeaks=aPeaks[aPeaks <= lastPeak]
-        # print aPeaks
-        # print aPeaks
+        # # fitsRow=fitGausPeaks(rowHist,axRow)
+        # # print aPeaks
+        # aPeaks=aPeaks[aPeaks>=firstPeak]   
+        # # print aPeaks 
+        # aPeaks=aPeaks[aPeaks <= lastPeak]
+        # # print aPeaks
+        # # print aPeaks
         aPeaks.sort()
-        print 'sdt(diff(aPeaks)', std(diff(aPeaks)), 'aPeaks',aPeaks,'diff(aPeaks)',diff(aPeaks)
-        if len(aPeaks)>maxNPeaks:
-            aPeaks=aPeaks[0:maxNPeaks]
-        if len(aPeaks)>1 and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
+        # print 'sdt(diff(aPeaks)', std(diff(aPeaks)), 'aPeaks',aPeaks,'diff(aPeaks)',diff(aPeaks)
+        # if len(aPeaks)>maxNPeaks:
+        #     aPeaks=aPeaks[0:maxNPeaks]
+        print 'aPeaks',aPeaks
+        if len(aPeaks)>1:# and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
             dPeaks=diff(aPeaks)
             print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
-            fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
+            fitsPeaks=fitGausPeaks(peaksHist,fitsPeaks,width=10)
+            dPmaxBin=dPeaksHist.GetMaximumBin()
+            dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
+            # gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
+            gf=dPeaksHist.Fit('gaus','QS','',dPmax-10,dPmax+10)
+            dMean=gf.Value(1)
+            dMeanEr=gf.Error(1)
+            dSig=gf.Value(2)
+            dSigEr=gf.Error(2)
+            print 'fit the dPeaksHist'
+            dPeaksHist.Draw()
+        # fitsPeaks=fitGausPeaks(rowHist,fitsPeaks[0:maxNPeaks])
         # arFitsPeaks=array([x[0] for x in fitsPeaks])
         # arDiff=diff(arFitsPeaks)
         # dMean=mean(arDiff)
@@ -273,7 +312,9 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=180,
             # nFound = sRow.Search(peaksHist,3.5,'',0.5)
             # xsPeaks=sRow.GetPositionX()
             # aPeaks=rwBuf2Array(xsPeaks,nFound)
+
             gf=peaksHist.Fit('gaus','QS','',pMax-5,pMax+5)
+            print 'fit the peaksHist'
         # gf=dPeaksHist.Fit('gaus','QS','',dPmax-10,dPmax+10)
             dMean=gf.Value(1)
             dMeanEr=gf.Error(1)
@@ -293,15 +334,16 @@ def findPeaks(image,center,peakThresh=0.01,verbose=False,doLogIm=True,pSize=180,
             # fitsPeaks=fitsPeaks[fitsPeaks<=lastPeak]
             # print fitsPeaks
             # idx=len(fitsPeaks)-1
-            # dMean=fitsPeaks[idx][0]
-            # dMeanEr=fitsPeaks[idx][2]
-            # dSig=fitsPeaks[idx][1]
-            # dSigEr=fitsPeaks[idx][3]
+        # dMean=0
+        # dMeanEr=0
+        # dSig=0
+        # dSigEr=0
         # peaksHist.Draw()
         if verbose:
             print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
                 
         return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur,im0)
+        # return (0, 0, 0, 0,fitsPeaks,blur,im0)
     except Exception, e:
         print e
         return None  

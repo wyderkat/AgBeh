@@ -4,7 +4,7 @@
 import cv2
 import sys
 import os
-from agbehPeakFinder_SL2 import *
+from agbehPeakFinder_SL2_2_1 import *
 from numpy import *
 
 def main(argv=sys.argv):

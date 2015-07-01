@@ -47,7 +47,7 @@ def fill_hist(th1,ar1):
         th1.Fill(ar1[idx])
 
 
-def fitGausPeaks(th,peaks,width=30):
+def fitGausPeaks(th,peaks,width=30,showFits=False):
     # th:    a tHist which we've done some peak fitting to, and we want to get gaussian fits to those peaks
     # peaks: an np array of the approx x coords of the peaks we want to fit.
     # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
@@ -74,7 +74,10 @@ def fitGausPeaks(th,peaks,width=30):
             print 'Histo name: ',th.GetName(),'\nHisto Title: ',th.GetTitle()
             continue
         # print 'fit: low,high ',peaks[idx]-width/2.,peaks[idx]+width/2.
-        gf=th.Fit('gaus','QSNO','goff',peaks[idx]-width/2.,peaks[idx]+width/2.)
+        if showFits:
+            gf=th.Fit('gaus','QS','',peaks[idx]-width/2.,peaks[idx]+width/2.)
+        else:
+            gf=th.Fit('gaus','QSNO','goff',peaks[idx]-width/2.,peaks[idx]+width/2.)
         # print 'did we fit?\t',gf
         # if gf:
             # print 'gf: ',gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)
