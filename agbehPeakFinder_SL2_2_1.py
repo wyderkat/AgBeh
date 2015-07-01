@@ -228,7 +228,7 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
             fill_hist(peaksHist, arFitsRow)
             fill_hist(dPeaksHist,arDiff)
             
-        print 'out of second iter'
+        # print 'out of second iter'
 
         # tc=TCanvas()
         # tc.Divide(1,2)
@@ -275,21 +275,22 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         # print 'sdt(diff(aPeaks)', std(diff(aPeaks)), 'aPeaks',aPeaks,'diff(aPeaks)',diff(aPeaks)
         # if len(aPeaks)>maxNPeaks:
         #     aPeaks=aPeaks[0:maxNPeaks]
-        print 'aPeaks',aPeaks
+        # print 'aPeaks',aPeaks
         if len(aPeaks)>1:# and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
             dPeaks=diff(aPeaks)
-            print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
+            if verbose:
+                print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
             fitsPeaks=fitGausPeaks(peaksHist,fitsPeaks,width=10)
             dPmaxBin=dPeaksHist.GetMaximumBin()
             dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
             # gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
-            gf=dPeaksHist.Fit('gaus','QS','',dPmax-10,dPmax+10)
+            gf=dPeaksHist.Fit('gaus','QSNO','',dPmax-10,dPmax+10)
             dMean=gf.Value(1)
             dMeanEr=gf.Error(1)
             dSig=gf.Value(2)
             dSigEr=gf.Error(2)
-            print 'fit the dPeaksHist'
-            dPeaksHist.Draw()
+            # print 'fit the dPeaksHist'
+            # dPeaksHist.Draw()
         # fitsPeaks=fitGausPeaks(rowHist,fitsPeaks[0:maxNPeaks])
         # arFitsPeaks=array([x[0] for x in fitsPeaks])
         # arDiff=diff(arFitsPeaks)
@@ -300,7 +301,8 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         # print fitsPeaks
         # if len(aPeaks)==1:
         else:
-            print 'One Peak ++++++'
+            if verbose:
+                print 'One Peak ++++++'
             # (mean,sigma,errMean,errSig)
             # print peaksHistAr
             peaksHistAr=setAr1DtoBins(peaksHist)
@@ -313,8 +315,8 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
             # xsPeaks=sRow.GetPositionX()
             # aPeaks=rwBuf2Array(xsPeaks,nFound)
 
-            gf=peaksHist.Fit('gaus','QS','',pMax-5,pMax+5)
-            print 'fit the peaksHist'
+            gf=peaksHist.Fit('gaus','QSNO','goff',pMax-5,pMax+5)
+            # print 'fit the peaksHist'
         # gf=dPeaksHist.Fit('gaus','QS','',dPmax-10,dPmax+10)
             dMean=gf.Value(1)
             dMeanEr=gf.Error(1)
@@ -341,8 +343,11 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         # peaksHist.Draw()
         if verbose:
             print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
-                
-        return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur,im0)
+            peaksHistAr=setAr1DtoBins(peaksHist)
+            dPeaksHistAr=setAr1DtoBins(dPeaksHist)
+            return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur,im0,peaksHistAr,dPeaksHistAr)
+        else:       
+            return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur,im0)
         # return (0, 0, 0, 0,fitsPeaks,blur,im0)
     except Exception, e:
         print e
