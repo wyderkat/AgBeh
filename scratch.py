@@ -1633,7 +1633,7 @@ at3=at3.astype(int)
 
 # imp[at3,r]=im0       
 
-imPolar=zeros((amax(at3)+1,amax(r)+1))
+imPolar2=zeros((amax(at3)+1,amax(r)+1))
 # imPolar[at3,r]=im0
 # do this to get the fortran indexing right
 # r+=1
@@ -1641,3 +1641,4 @@ imPolar=zeros((amax(at3)+1,amax(r)+1))
 # polarize(im0,at3,r,imPolar)
 imPolar = polarize(im0,at3,r,imPolar)
 # imp = polarize(im0,at3,r,imp,[n1,n2,rmax,tmax,overwrite_imp])
+f2py -c polarize.f --f90flags="-ffixed-line-length-132" -m polarize
