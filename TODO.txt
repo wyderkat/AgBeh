@@ -44,7 +44,7 @@ Made the impolar 500x500. Put gaus blur(5,5) on the impolar, then still do smoot
     in the comment need to be done again.
 
 ----------------------------------------
-Never look at more than the 5 innermost peaks - maybe up to 7 (adjustable param)
+DONE: Never look at more than the 5 innermost peaks - maybe up to 7 (adjustable param)
 
 DONE: Firstpeak - maybe keep at 50, and if our spacing is small enough, then reduce it to 20 or so and include that one.
         Did it the opposite way - start at 20 and increase to 50 if spacing is big.

@@ -7,6 +7,7 @@ from npRootUtils import *
 from numpy import *
 import sys
 from pilatus_np import JJTiff
+from polarize import polarize
 # im0=retrieveImage('SFU/raw/latest_0000150_caz.tiff',makeU8=True,doLog=True)
 # im0=retrieveImage('SFU/raw/latest_0000150_caz.tiff',doLog=True)
 # im0=retrieveImage('SFU/raw/latest_0000141_caz.tiff',doLog=True) # ~46.2
@@ -116,20 +117,43 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         yM,xM=im0.shape
         vP=TVector2()
         
-        # this is the main bottleneck in this code - it should be vectorized or converted
-        for x in range(xM):
-            vP.SetX(x-colCenter)
-            for y in range(yM):
+        # this is the main bottleneck in this code - it should be vectorized or converted to a C module.
+        # for x in range(xM):
+        #     vP.SetX(x-colCenter)
+        #     for y in range(yM):
                 
-                vP.SetY(y-rowCenter)
-                p=vP.Phi()*pSize/(2*pi)
-                r=vP.Mod()
-                # p=1327./(2*pi)*p
-                # imPolarHist.Fill(r,p,im0[y,x])
-                # print p,r
-                imPolar[round(p),round(r)]+=im0[y,x]
-                
+        #         vP.SetY(y-rowCenter)
+        #         p=vP.Phi()*pSize/(2*pi)
+        #         r=vP.Mod()
+        #         # p=1327./(2*pi)*p
+        #         # imPolarHist.Fill(r,p,im0[y,x])
+        #         # print p,r
+        #         imPolar[round(p),round(r)]+=im0[y,x]
+        X,Y=indices(im0.shape)
+        Xc=X-rowCenter
+        Yc=Y-colCenter
+        r=around(((Xc)**2+(Yc)**2)**.5)
+
+        at3=arctan2(Yc,Xc)
+        # imshow(at3)
+        at3
+        at3[at3<0]+=2*pi
+        at3
+        # imshow(at3)
+        at3*=pSize/(2*pi)
+        r=r.astype(int)
+        at3=at3.astype(int)
+
+        # imp[at3,r]=im0       
         
+        imPolar=zeros((amax(at3)+1,amax(r)+1))
+        # This one doesn't do += properly: you just get the last value that mapped to the new coords. So we lose info.
+        # imPolar[at3,r]+=im0
+
+        # This one I wrote in Fortran, it does the proper +=
+        imPolar = polarize(im0,at3,r,imPolar)
+        # imshow(impp)
+
         # run a gaus filter over the polar image to blend in the rough spots
         blur = cv2.GaussianBlur(imPolar,(3,3),0)
 

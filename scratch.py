@@ -1504,6 +1504,12 @@ if len(aPeaks)==1:
 print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
 
 
+
+
+
+
+
+
 # kernel = ones((5,5),np.float32)/25
 # dst = cv2.filter2D(imPolar,-1,kernel)
 # blur = cv2.GaussianBlur(imPolar,(5,5),0)
@@ -1529,3 +1535,109 @@ print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- '
 # # plt.subplot(122),plt.imshow(dst),plt.title('Averaging')
 # plt.xticks([]), plt.yticks([])
 # plt.show()
+
+X
+out = cv2.linearPolar(im0, center, self.iris_radius, cv2.WARP_FILL_OUTLIERS)
+imp=cv2.linearPolar(im0, (350,200), 500, cv2.WARP_FILL_OUTLIERS)
+cv.LogPolar(im0,imp,(350,200),100,cv.CV_WARP_FILL_OUTLIERS)
+
+for x in range(xM):
+    vP.SetX(x-colCenter)
+    for y in range(yM):
+        
+        vP.SetY(y-rowCenter)
+        p=vP.Phi()*pSize/(2*pi) # arctan2(y,x)*pSize/(2*pi)
+        r=vP.Mod() # (x**2+y**2)**.5
+        # p=1327./(2*pi)*p
+        # imPolarHist.Fill(r,p,im0[y,x])
+        # print p,r
+        imPolar[round(p),round(r)]+=im0[y,x]
+                
+# yi=arange(486,-1,-1)
+# X
+# xi=arange(618,-1,-1)      
+# Xi,Yi=meshgrid(xi,yi)
+
+X,Y=indices(im0.shape)
+Xc=X-350
+Yc=Y-200
+r=around(((Xc)**2+(Yc)**2)**.5)
+
+at3=arctan2(Yc,Xc)
+imshow(at3)
+at3
+at3[at3<0]+=2*pi
+at3
+imshow(at3)
+at3*=500/(2*pi)
+r=r.astype(int)
+at3=at3.astype(int)
+
+imp[at3,r]=im0
+
+r2=r.flatten()
+at2=at3.flatten()
+im0f=im0.flatten()
+map(lambda x,y,z:z[x][y], at2,r2,im0f)
+
+
+impp=zeros((amax(at3)+1,amax(r)+1))
+impp[at3,r]=im0
+imshow(impp)
+
+
+def appendSpherical_np(xyz):
+    ptsnew = np.hstack((xyz, np.zeros(xyz.shape)))
+    xy = xyz[:,0]**2 + xyz[:,1]**2
+    ptsnew[:,3] = np.sqrt(xy + xyz[:,2]**2)
+    ptsnew[:,4] = np.arctan2(np.sqrt(xy), xyz[:,2]) # for elevation angle defined from Z-axis down
+    #ptsnew[:,4] = np.arctan2(xyz[:,2], np.sqrt(xy)) # for elevation angle defined from XY-plane up
+    ptsnew[:,5] = np.arctan2(xyz[:,1], xyz[:,0])
+    return ptsnew
+
+
+from saxsUtils import *
+# import cv2
+# from ROOT import TH1D, TH2D, TSpectrum, TCanvas,TVector2
+# from npRootUtils import *
+# from root_numpy import fill_hist
+# from numpy import *
+from polarize import polarize
+
+
+# im0=retrieveImage('SFU/raw/latest_0000150_caz.tiff',makeU8=True,doLog=True)
+im0=retrieveImage('SFU/raw/latest_0000154_caz.tiff',doLog=True) # a bad gauss fit to peakshist in the end gives a wrong peak
+# im0=retrieveImage('SFU/raw/latest_0000141_caz.tiff',doLog=True) # ~46.2
+# im0=retrieveImage('SFU/raw/latest_0000163_caz.tiff',doLog=True) #difficult
+onePeak=False#True
+# im0=retrieveImage('SFU/raw/latest_0000138_caz.tiff',doLog=True) # ~23.3
+# im0=retrieveImage('SFU/raw/latest_0000166_caz.tiff',doLog=True) # ~235.6
+# im0=retrieveImage('SFU/raw/latest_0000155_caz.tiff',doLog=True) # ~151.9
+rowCenter=350
+colCenter=200
+pSize=90
+X,Y=indices(im0.shape)
+Xc=X-rowCenter
+Yc=Y-colCenter
+r=around(((Xc)**2+(Yc)**2)**.5)
+
+at3=arctan2(Yc,Xc)
+# imshow(at3)
+at3
+at3[at3<0]+=2*pi
+at3
+# imshow(at3)
+at3*=pSize/(2*pi)
+r=r.astype(int)
+at3=at3.astype(int)
+
+# imp[at3,r]=im0       
+
+imPolar=zeros((amax(at3)+1,amax(r)+1))
+# imPolar[at3,r]=im0
+# do this to get the fortran indexing right
+# r+=1
+# at3+=1
+# polarize(im0,at3,r,imPolar)
+imPolar = polarize(im0,at3,r,imPolar)
+# imp = polarize(im0,at3,r,imp,[n1,n2,rmax,tmax,overwrite_imp])
