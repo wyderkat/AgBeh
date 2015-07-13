@@ -12,6 +12,7 @@ Then to set up all the relevant PATH variables, put this in your ~/.bashrc
 
 
 ++++++++++++
+
 Not sure if you need gfortran to run the little python module written in fortran. If polarize chokes, that's probably why.
 
 To test the agbehPeakFinder_SL module on real saxs images, run
