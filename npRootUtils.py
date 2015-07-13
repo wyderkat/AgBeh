@@ -4,6 +4,13 @@ def setBinsToAr1D(hist,ar):#,xlow,xup):
     for i in range(len(ar)):
         hist.SetBinContent(i+1,ar[i])
 
+def setBinsToAr2D(hist,ar):
+    # SetBinContent(Int_t binx, Int_t biny, Double_t content)
+    nbinsy,nbinsx=ar.shape
+    for x in range(nbinsx):
+        for y in range(nbinsy):
+            hist.SetBinContent(x+1,y+1,ar[y,x])
+
 def setAr1DtoBins(hist):
     nBins=hist.GetNbinsX()
     ar=zeros((nBins))
