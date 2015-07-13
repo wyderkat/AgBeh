@@ -23,3 +23,5 @@ Cf2py intent(in,out,overwrite) imp
         end
 
 
+! compile: f2py -c polarize.f --f90flags="-ffixed-line-length-132" -m polarize
+! the f90flags probably aren't needed, and probably don't cure what I was trying to cure. Try it without.
