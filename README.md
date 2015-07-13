@@ -1,6 +1,7 @@
 You'll need:
 
 OpenCV -> apt-get install opencv should do it.
+
 Cern ROOT -> https://root.cern.ch/drupal/content/downloading-root
 
 Get the latest ROOT version (6.04/00 at the time of this writing, earlier versions will do a core-dump if fitting fails, so stay away from that). I just used the tarball for my linux distribution, and put it at /usr/local/root/
