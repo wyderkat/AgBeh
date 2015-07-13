@@ -61,9 +61,7 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
      tuple:        (peakSpacing, peakSpacingSigma, peakSpacingErr, peaksList)
                    peakSpacing, peakSpacingSigma, peakSpacingErr are from fitting a histogram of found peak spacings
                    to a gaussian. 
-                   peaksList is a list of tuples (peak,sig,errPeak,errSig), as radius from center. The peaks are
-                   located again by doing gaussian fits to the peaks in the histogram built from the location of every 
-                   peak found during the slicing and fitting process.
+                   peaksList is a list of tuples (peakCenter,sig,errPeakCenter,errSig), as radius from center.
 
      Returns None on failure.
     """
@@ -78,7 +76,7 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
 
 
 
-        rowCenter=float(center[0])# 350
+        rowCenter=float(center[0])# 350 for the sample set of images
         colCenter=float(center[1])# 200
         peakThresh=float(peakThresh)
         pSize=int(pSize)
@@ -91,6 +89,7 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         # vP=TVector2()
         
         # this is the main bottleneck in this code - it should be vectorized or converted to a C module.
+        # unroll into polar coordinates
         # for x in range(xM):
         #     vP.SetX(x-colCenter)
         #     for y in range(yM):
@@ -102,6 +101,8 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         #         # imPolarHist.Fill(r,p,im0[y,x])
         #         # print p,r
         #         imPolar[round(p),round(r)]+=im0[y,x]
+
+        # much faster
         X,Y=indices(im0.shape)
         Xc=X-rowCenter
         Yc=Y-colCenter
@@ -120,7 +121,9 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         if not lastPeak:
             lastPeak=int(rSize)
         else:
-            lastPeak=int(lastPeak)    
+            lastPeak=int(lastPeak)   
+
+        # Init the histos, now that we know how big to make them.
         peaksHist= TH1D('peaksHist','peaks',rSize*10,0,rSize)
         prePeaksHist= TH1D('prePeaksHist','prePeaksHisteaks',rSize*10,0,rSize)
         dPeaksHist=TH1D('dPeaksHist','dPeaks',rSize,0,rSize)
@@ -130,7 +133,7 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         # This one doesn't do += properly: you just get the last value that mapped to the new coords. So we lose info.
         # imPolar[at3,r]+=im0
 
-        # This one I wrote in Fortran, it does the proper +=, and it's full speed.
+        # This one I wrote in Fortran (just because it's really easy to compile fortran modules to work with numpy), it does the proper +=, and it's full speed.
         imPolar = polarize(im0,at3,r,imPolar)
         # imshow(impp)
 
