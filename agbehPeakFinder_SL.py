@@ -11,13 +11,13 @@ from polarize import polarize
 def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,firstPeak=20,lastPeak=None,smoothingWindow=13,minDiff=20,difThresh=70,maxNPeaks=5):
     """
 
-    findPeaks(center,image,rad)
+    findPeaks(center,image[,kwargs...])
 
     Take a saxslab tiff of AgBeh, and return peak spacing, and an array of found peak coordinates (radius from center).
 
     Peaks in the radial range (firstPeak:lastPeak) are found by first unrolling the image into polar coordinates. We then
     iterate down the image by rows and do a rough peak search on each row. The peak coordinates from this search are then
-    fed to a function that separately fits a small range of the row, centered on each peak coordinate, to a gaussian
+    fed to a function that separately fits a small range of a row, centered on each peak coordinate, to a gaussian
     curve, and the mean from each fit is added into a histogram. This process is repeated for each row in polar space.
 
     Also, the spacing between all the peaks in a row is added to a histogram of peak spacings.
@@ -37,7 +37,8 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
                     of the largest peak, in order to be counted as a peak by the peak finder.
 
      verbose        Control the level of output from this function. Setting this to false will cause the function to
-                    spress any output to the screen.
+                    supress any output to the screen. Setting to true will print a small report upon copletion, and also
+                    return the histograms of peak locations and spacings.
 
      doLogIm:       Whether or not to work with the log of the input image.
 
@@ -58,10 +59,21 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
      maxNPeaks:     How many peaks out from the center to we use (default is 5).
      
      output
-     tuple:        (peakSpacing, peakSpacingSigma, peakSpacingErr, peaksList)
-                   peakSpacing, peakSpacingSigma, peakSpacingErr are from fitting a histogram of found peak spacings
-                   to a gaussian. 
+     tuple:        (peakSpacing, peakSpacingSigma, peakSpacingErr, peakSpacingSigmaErr, peaksList, imPolar, im0)
+                    
+                   peakSpacing, peakSpacingSigma, peakSpacingErr, peakSpacingSigmaErr are from fitting a histogram
+                   of found peak spacingss to a gaussian. 
+
                    peaksList is a list of tuples (peakCenter,sig,errPeakCenter,errSig), as radius from center.
+                   imPolar is the polar representation of the input image that is used for the peak finding.
+                   im0 is the original image passed in.
+
+                   If verbose was set to true, the output will be:
+
+                   (peakSpacing, peakSpacingSigma, peakSpacingErr, peakSpacingSigmaErr, eaksList, imPolar, im00, peaksHistAr, dPeaksHistAr)
+
+                   With the last two items in the output tuple are the peak location histogram, and the peak spacing
+                   histogram as tuples of numpy arrays, where the [0]th element is the data and the [1]st is the axis.
 
      Returns None on failure.
     """
@@ -218,10 +230,10 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
         # multiple peaks
         if len(aPeaks)>1:# and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
             
-            dPeaks=diff(aPeaks) # was just curious how close this is to the result we get with the actual dPeaksHist
+            # dPeaks=diff(aPeaks) # was just curious how close this is to the result we get with the actual dPeaksHist
             fitsPeaks=fitGausPeaks(peaksHist,fitsPeaks,width=10)#,showFits=True)
-            if verbose:
-                print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
+            # if verbose:
+                # print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
             
 
             # find the tallest peak in dPeaksHist and fit a gauss to it - this is our working peak distance.
