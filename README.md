@@ -1,6 +1,6 @@
 You'll need:
 
-OpenCV -> apt-get install opencv should do it.
+OpenCV -> apt-get install python-opencv should do it.
 
 Cern ROOT -> https://root.cern.ch/drupal/content/downloading-root
 
