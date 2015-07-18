@@ -172,7 +172,8 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
 
         # get a list of peaks in our rough peak histo
         nFound = sRow.Search(prePeaksHist,0.33,'goff',0.025)
-        print nFound
+        if verbose:
+          print nFound
         # prePeaksHist.Draw()
         xsPeaks=sRow.GetPositionX()
         aPeaks=rwBuf2Array(xsPeaks,nFound)
@@ -303,10 +304,31 @@ def main(argv=sys.argv):
     center=(argv[2],argv[3])
     
     p=findPeaks(im,center,verbose=True)
-    
-    
     print
-    print (p,im0,imPolar)
+    p=findPeaks(im,center,verbose=True)
+    
+    
+    # print p
+
+import unittest
+
+class a_testcase(unittest.TestCase):
+
+  def test_4(me):
+
+    files = [ 
+      (142, (53.84568342941077, 0.8622330357987071, 0.05311658514998754, 0.05586492186835462) ),
+      (143, (61.508508907329706, 0.9031407554284832, 0.06134643997660053, 0.03940823942452154) ),
+      (137, (37.12425793776592, 4.454433844722973, 0.8194620422574127, 1.3707865416975364) ),
+      (158, (174.63267829976627, 0.20404616811924745, 0.024227341549215325, 0.023505703755918456) ),
+      (166, (235.59694110948064, 0.20495192682856153, 0.02373238792327561, 0.021109767427827095) ),
+        ]
+
+    for f,r in files:
+      p=findPeaks("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
+      # print p[:4]
+      me.assertEqual( p[:4], r ) 
+
 
 if __name__ == '__main__':
     main()
