@@ -133,6 +133,17 @@ def findPeaks(
   polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
   # show_array( polarImage )
 
+  polarImage1 = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
+  # show_array( polarimage1 )
+
+  rowPeaks = np.array( [] )
+
+  for row in polarImage1:
+    peaks = peakMarkov( row, radiusSize, firstPeak, lastPeak, peakThresh, rowHist)
+    rowPeaks = np.append( rowPeaks, peaks )
+  print rowPeaks
+  h,e = np.histogram( rowPeaks , bins=radiusSize*10, range=(0,radiusSize) )
+  # show_vector( h )
 
   # first pass - roughly find all the peaks and make a histo.
   for rIdx in range(polarImage.shape[0]):#[1:]:
@@ -168,6 +179,7 @@ def findPeaks(
   
   # prePeaksHist.Draw(); raw_input("continue?")
 
+  NEXT porownać wartości liczbowe
 
 # 3) proper Gauss fit -> fitsPeaks
 
@@ -457,12 +469,33 @@ def imageToPolar( image, center, polarSize ):
 
   return (polarImage, radiusSize )
 
+# TODO !!!! Now is slower than before
+
+def smoothMarkov( row, window ):
+  copy = np.array( row )
+  S=TSpectrum()
+  S.SmoothMarkov( copy, copy.shape[0], window )
+  return copy
+  
+def peakMarkov( row, radiusSize, firstPeak, lastPeak, peakThresh, rowHist):
+  S=TSpectrum()
+  # just for using it in Search()
+  setBinsToAr1D(rowHist,row)
+  # how many peaks
+  nFoundRow=S.Search(rowHist,1,'goff',peakThresh)
+  # peaks positions in ROOT format...
+  xsRow=S.GetPositionX()
+  # peaks position in arrary
+  axRow=rwBuf2Array(xsRow,nFoundRow)
+  axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
+  return axRow
+
 def main(argv=sys.argv):
     im=argv[1]
     center=(argv[2],argv[3])
     
     p = findPeaks( im, center, verbose=True )
-    print p
+    # print p
     
 def show_array( a ):
   plt.imshow( a )
