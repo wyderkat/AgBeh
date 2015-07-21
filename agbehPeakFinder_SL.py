@@ -3,6 +3,8 @@
 import cv2
 from ROOT import TH1D, TSpectrum
 from npRootUtils import *
+import numpy as np
+# TODO
 from numpy import *
 import sys
 from pilatus_np import JJTiff
@@ -11,10 +13,21 @@ from polarize import polarize
 from time import sleep
 import matplotlib.pyplot as plt
 
-def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,firstPeak=20,lastPeak=None,smoothingWindow=13,minDiff=20,difThresh=70,maxNPeaks=5):
-    """
-
-    findPeaks(center,image[,kwargs...])
+def findPeaks(
+              imageOrFilename,
+              center,
+              peakThresh=0.05,
+              verbose=False,
+              doLogIm=True,
+              polarSize=90,
+              firstPeak=20,
+              lastPeak=None,
+              smoothingWindow=13,
+              minDiff=20,
+              difThresh=70,
+              maxNPeaks=5,
+  ):
+  """
 
     Take a saxslab tiff of AgBeh, and return peak spacing, and an array of found peak coordinates (radius from center).
 
@@ -32,7 +45,7 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
     are again fit to gaussians, and the mean, sigma, and error of each are stored in a list of tuples in the output.
 
      input
-     image:         A path to a saxslab tiff, or an np array of a saxslab tiff.
+     imageOrFilename:         A path to a saxslab tiff, or an np array of a saxslab tiff.
     
      center:        tuple or list -> (rowCenter,colCenter), where rowCenter is the coord in pix of the center row.
                                                    colCenter is defined the same way, but for center col.
@@ -45,7 +58,7 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
 
      doLogIm:       Whether or not to work with the log of the input image.
 
-     pSize:         How many lines in the phi direction will we use in polar space?
+     polarSize:         How many lines in the phi direction will we use in polar space?
 
      firstPeak:     Min radius of a peak to be considered in the calculations.
 
@@ -62,362 +75,242 @@ def findPeaks(image,center,peakThresh=0.05,verbose=False,doLogIm=True,pSize=90,f
      maxNPeaks:     How many peaks out from the center to we use (default is 5).
      
      output
-     tuple:        (peakSpacing, peakSpacingSigma, peakSpacingErr, peakSpacingSigmaErr, peaksList, imPolar, im0)
+     tuple:        (peakSpacing, peakSpacingSigma, peakSpacingErr, peakSpacingSigmaErr, peaksList, polarImage, im0)
                     
                    peakSpacing, peakSpacingSigma, peakSpacingErr, peakSpacingSigmaErr are from fitting a histogram
                    of found peak spacingss to a gaussian. 
 
                    peaksList is a list of tuples (peakCenter,sig,errPeakCenter,errSig), as radius from center.
-                   imPolar is the polar representation of the input image that is used for the peak finding.
+                   polarImage is the polar representation of the input image that is used for the peak finding.
                    im0 is the original image passed in.
 
                    If verbose was set to true, the output will be:
 
-                   (peakSpacing, peakSpacingSigma, peakSpacingErr, peakSpacingSigmaErr, eaksList, imPolar, im00, peaksHistAr, dPeaksHistAr)
+                   (peakSpacing, peakSpacingSigma, peakSpacingErr, peakSpacingSigmaErr, eaksList, polarImage, im00, peaksHistAr, dPeaksHistAr)
 
                    With the last two items in the output tuple are the peak location histogram, and the peak spacing
                    histogram as tuples of numpy arrays, where the [0]th element is the data and the [1]st is the axis.
 
      Returns None on failure.
     """
-    try:
 
-        # determine if image is an image or a path:
-        if type(image)==str:
-            image=retrieveImage(image,doLog=doLogIm)
+  if type(imageOrFilename)==str:
+    image = retrieveImage(imageOrFilename,doLog=doLogIm)
+  else:
+    image = imageOrFilename
 
-        im0=image
-
-
-
-
-        rowCenter=float(center[0])# 350 for the sample set of images
-        colCenter=float(center[1])# 200
-        peakThresh=float(peakThresh)
-        pSize=int(pSize)
-        
-        firstPeak=int(firstPeak)
-        smoothingWindow=int(smoothingWindow)
-        minDiff=int(minDiff)
-        yM,xM=im0.shape
-        # print yM,xM # 619 486
-
-# 1) polar system
+  peakThresh=float(peakThresh)
+  polarSize=int(polarSize)
   
-        # unroll into polar coordinates
-        X,Y=indices(im0.shape)
-        # print X
-        # 0 0 0 0 ...
-        # 1 1 1 1 ...
-        # ....
-        # 618 618 618
+  firstPeak=int(firstPeak)
+  smoothingWindow=int(smoothingWindow)
+  minDiff=int(minDiff)
+  yM,xM= image.shape
+  # print yM,xM # 619 486
 
-        Xc=X-rowCenter
-        Yc=Y-colCenter
-        r=around(((Xc)**2+(Yc)**2)**.5)
-        # print r
-        #[403.  403.  402. ...,  451.  451.  452.]
-        #[ 402.  402.  401. ...,  450.  451.  451.]
-        #[ 401.  401.  400. ...,  449.  450.  450.]
-        #..., 
-        #[ 333.  332.  332. ...,  389.  390.  391.]
-        #[ 334.  333.  332. ...,  390.  391.  391.]
-        #[ 334.  334.  333. ...,  390.  391.  392.]]
-        
+  polarImage,radiusSize = imageToPolar( image, center, polarSize ) 
 
-        at3=arctan2(Yc,Xc)
-        # print at3
-        #[-2.62244654 -2.62460304 -2.62676483 ...,  2.45992182  2.45820141
-        #  2.45648581]
-        #[-2.62121311 -2.62337275 -2.62553772 ...,  2.45852146  2.45680006
-        #  2.45508348]
-        #[-2.61997436 -2.62213713 -2.62430527 ...,  2.45711627  2.45539388
-        #  2.45367633]
-        #..., 
-        #[-0.64470303 -0.64229702 -0.63988231 ...,  0.81811376  0.81986726
-        #  0.82161421]
-        #[-0.64290159 -0.64049811 -0.638086   ...,  0.81624137  0.81799531
-        #  0.8197427 ]
-        #[-0.64110877 -0.63870786 -0.63629835 ...,  0.81437556  0.8161299
-        #  0.81787771]]
+  if not lastPeak:
+      lastPeak=int(radiusSize)
+  else:
+      lastPeak=int(lastPeak)   
+  # print lastPeak
+  # 453
+
+  # Init the histos, now that we know how big to make them.
+  peaksHist= TH1D('peaksHist','peaks',radiusSize*10,0,radiusSize)
+  prePeaksHist= TH1D('prePeaksHist','prePeaksHisteaks',radiusSize*10,0,radiusSize)
+  dPeaksHist=TH1D('dPeaksHist','dPeaks',radiusSize,0,radiusSize)
+  rowHist=TH1D('rowHist','row',radiusSize,0,radiusSize)
 
 
-        # imshow(at3)
-        # convert angles < 0 to positive
-        at3[at3<0]+=2*pi
-        # print at3
-        #[[ 3.66073877  3.65858227  3.65642047 ...,  2.45992182  2.45820141
-        #   2.45648581]
-        # [ 3.66197219  3.65981256  3.65764759 ...,  2.45852146  2.45680006
-        #   2.45508348]
-        # [ 3.66321095  3.66104817  3.65888003 ...,  2.45711627  2.45539388
-        #   2.45367633]
-        # ..., 
-        # [ 5.63848228  5.64088829  5.643303   ...,  0.81811376  0.81986726
-        #   0.82161421]
-        # [ 5.64028372  5.64268719  5.64509931 ...,  0.81624137  0.81799531
-        #   0.8197427 ]
-        # [ 5.64207654  5.64447745  5.64688695 ...,  0.81437556  0.8161299
-        #   0.81787771]]
-        
-        # imshow(at3)
-
-        at3*=pSize/(2*pi)
-        # print at3
-        #[[ 52.43622032  52.40533078  52.3743653  ...,  35.23578449  35.21114147
-        #   35.1865673 ]
-        # [ 52.45388784  52.42295332  52.39194243 ...,  35.21572592  35.19106859
-        #   35.16648039]
-        # [ 52.47163174  52.44065224  52.40959592 ...,  35.19559808  35.17092658
-        #   35.14632449]
-        # ..., 
-        # [ 80.76530932  80.79977296  80.83436111 ...,  11.71861639  11.7437335
-        #   11.76875659]
-        # [ 80.79111308  80.82554031  80.86009132 ...,  11.69179645  11.71691971
-        #   11.74194925]
-        # [ 80.81679333  80.85118388  80.88569748 ...,  11.66507059  11.69019964
-        #   11.71523527]]
-
-        r=r.astype(int)
-        # print r
-        #[[403 403 402 ..., 451 451 452]
-        # [402 402 401 ..., 450 451 451]
-        # [401 401 400 ..., 449 450 450]
-        # ..., 
-        # [333 332 332 ..., 389 390 391]
-        # [334 333 332 ..., 390 391 391]
-        # [334 334 333 ..., 390 391 392]]
-
-        at3=at3.astype(int)
-        # print at3
-        #[[52 52 52 ..., 35 35 35]
-        #[52 52 52 ..., 35 35 35]
-        #[52 52 52 ..., 35 35 35]
-        #..., 
-        #[80 80 80 ..., 11 11 11]
-        #[80 80 80 ..., 11 11 11]
-        #[80 80 80 ..., 11 11 11]]
-
-        # imp[at3,r]=im0 
-        rSize=amax(r)+1
-        # print rSize 
-        # 453
-        if not lastPeak:
-            lastPeak=int(rSize)
-        else:
-            lastPeak=int(lastPeak)   
-        # print lastPeak
-        # 453
-
-        # Init the histos, now that we know how big to make them.
-        peaksHist= TH1D('peaksHist','peaks',rSize*10,0,rSize)
-        prePeaksHist= TH1D('prePeaksHist','prePeaksHisteaks',rSize*10,0,rSize)
-        dPeaksHist=TH1D('dPeaksHist','dPeaks',rSize,0,rSize)
-        rowHist=TH1D('rowHist','row',rSize,0,rSize)
-
-        # allocate the polar image
-        imPolar=zeros((amax(at3)+1,rSize))
-        # print amax(at3)+1
-        # 90
-
-
-        # Straight up broadcasting in numpy doesn't do += properly: you just get the last value that mapped to the new coords. So we lose info.
-        # imPolar[at3,r]+=im0
-
-        # This one I wrote in Fortran (just because it's really easy to compile fortran modules to work with numpy), it does the proper +=, and it's full speed.
-        imPolar = polarize(im0,at3,r,imPolar)
-        # show_array( imPolar )
-
-        
+  
 # 2) first loop -> prePeaksHist
 
-        # run a gaus filter over the polar image to blend in the rough spots
-        # wyderkat - not needed - but different type...
-        blur = cv2.GaussianBlur(imPolar,(3,3),0)
-        # show_array( imPolar )
+  # run a gaus filter over the polar image to blend in the rough spots
+  # wyderkat - not needed - but different type...
+  blur = cv2.GaussianBlur(polarImage,(3,3),0)
+  # show_array( polarImage )
 
-        sRow=TSpectrum()
+  sRow=TSpectrum()
 
-        # first pass - roughly find all the peaks and make a histo.
-        for rIdx in range(blur.shape[0]):#[1:]:
-          # print blur.shape[0] 
-          # 90
-          
-          row=blur[rIdx,:]
-          if rIdx == 0:
-            # show_vector(row)
-            # print row
-            pass
+  # first pass - roughly find all the peaks and make a histo.
+  for rIdx in range(blur.shape[0]):#[1:]:
+    # print blur.shape[0] 
+    # 90
+    
+    row=blur[rIdx,:]
+    if rIdx == 0:
+      # show_vector(row)
+      # print row
+      pass
 
-          sRow.SmoothMarkov(row,len(row),smoothingWindow)
-          if rIdx == 0:
-            # show_vector(row)
-            # print row
-            pass
+    sRow.SmoothMarkov(row,len(row),smoothingWindow)
+    if rIdx == 0:
+      # show_vector(row)
+      # print row
+      pass
 
-          # just for using it in Search()
-          setBinsToAr1D(rowHist,row)
-          # how many peaks
-          nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh)
-          # peaks positions in ROOT format...
-          xsRow=sRow.GetPositionX()
-          # peaks position in arrary
-          axRow=rwBuf2Array(xsRow,nFoundRow)
-          if rIdx == 0:
-            # print axRow
-            pass
-          axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
-          fill_hist(prePeaksHist, axRow)
+    # just for using it in Search()
+    setBinsToAr1D(rowHist,row)
+    # how many peaks
+    nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh)
+    # peaks positions in ROOT format...
+    xsRow=sRow.GetPositionX()
+    # peaks position in arrary
+    axRow=rwBuf2Array(xsRow,nFoundRow)
+    if rIdx == 0:
+      # print axRow
+      pass
+    axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
+    fill_hist(prePeaksHist, axRow)
 
-        
-        # prePeaksHist.Draw(); raw_input("continue?")
+  
+  # prePeaksHist.Draw(); raw_input("continue?")
 
 
 # 3) proper Gauss fit -> fitsPeaks
 
-        # clean out the noise in our rough estimate of where to look for peaks
-        peaksHistAr=setAr1DtoBins(prePeaksHist)
-        # print len( peaksHistAr[0] )
-        # 10 times bigger because of peaksHistAr bins
-        # show_vector( peaksHistAr[0] )
-        
-        sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-        # show_vector( peaksHistAr[0] )
-        sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow) # second smoothing kills some outer rings
-        # show_vector( peaksHistAr[0] )
-                                                                              # but the trade off is false positive near 
-                                                                              # beam center in the farther-out detector
-                                                                              # displacements. 
-        setBinsToAr1D(prePeaksHist,peaksHistAr[0])
-        # prePeaksHist.Draw(); raw_input("continue?")
+  # clean out the noise in our rough estimate of where to look for peaks
+  peaksHistAr=setAr1DtoBins(prePeaksHist)
+  # print len( peaksHistAr[0] )
+  # 10 times bigger because of peaksHistAr bins
+  # show_vector( peaksHistAr[0] )
+  
+  sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+  # show_vector( peaksHistAr[0] )
+  sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow) # second smoothing kills some outer rings
+  # show_vector( peaksHistAr[0] )
+                                                                        # but the trade off is false positive near 
+                                                                        # beam center in the farther-out detector
+                                                                        # displacements. 
+  setBinsToAr1D(prePeaksHist,peaksHistAr[0])
+  # prePeaksHist.Draw(); raw_input("continue?")
 
-        # look for peaks and get the gauss fits - we use this instead of the peaks found from sRow.Search
-        # bacause sRow.Search can sometimes return multiple peaks that are very close together. If we do guass
-        # fits on two close together peaks, we should find the same center for both, and we can then filter them out,
-        # keeping only the unique entries.
+  # look for peaks and get the gauss fits - we use this instead of the peaks found from sRow.Search
+  # bacause sRow.Search can sometimes return multiple peaks that are very close together. If we do guass
+  # fits on two close together peaks, we should find the same center for both, and we can then filter them out,
+  # keeping only the unique entries.
 
-        # get a list of peaks in our rough peak histo
-        nFound = sRow.Search(prePeaksHist,0.33,'goff',0.025)
-        if verbose:
-          print nFound
-        # prePeaksHist.Draw()
-        xsPeaks=sRow.GetPositionX()
-        aPeaks=rwBuf2Array(xsPeaks,nFound)
-        # print aPeaks
-        
-        # get the gauss fits and filter for the unique peaks
-        fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
-        # print fitsPeaks
-        fitsPeaks=[x[0] for x in fitsPeaks]
-        fitsPeaks=unique(fitsPeaks)[0:maxNPeaks]
-        print fitsPeaks
-        
+  # get a list of peaks in our rough peak histo
+  nFound = sRow.Search(prePeaksHist,0.33,'goff',0.025)
+  if verbose:
+    print nFound
+  # prePeaksHist.Draw()
+  xsPeaks=sRow.GetPositionX()
+  aPeaks=rwBuf2Array(xsPeaks,nFound)
+  # print aPeaks
+  
+  # get the gauss fits and filter for the unique peaks
+  fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
+  # print fitsPeaks
+  fitsPeaks=[x[0] for x in fitsPeaks]
+  fitsPeaks=unique(fitsPeaks)[0:maxNPeaks]
+  print fitsPeaks
+  
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
-        # now iterate again, and just fit each row to the set of peaks we found above
-        for rIdx in range(blur.shape[0]):#[1:]:
-            
-          row=blur[rIdx,:]
-          setBinsToAr1D(rowHist,row)
-          fitsRow=fitGausPeaks(rowHist,fitsPeaks)
-          
-          arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
-          arFitsRow.sort()
-          arDiff=diff(arFitsRow)
-          ## wyderkat: a weak point
-          arDiff=array([x for x in arDiff if x>=minDiff])
-          
-          # one for peak positions
-          fill_hist(peaksHist, arFitsRow)
-          # one for peak distances from each other
-          fill_hist(dPeaksHist,arDiff)
-          if rIdx == 0:
-            # print fitsRow
-            # print arFitsRow
-            # print arDiff
-            # peaksHist.Draw(); raw_input("continue?\n")
-            # dPeaksHist.Draw(); raw_input("continue?\n")
-            pass
-          
-        # peaksHist.Draw(); raw_input("continue?\n")
-        # dPeaksHist.Draw(); raw_input("continue?\n")
+  # now iterate again, and just fit each row to the set of peaks we found above
+  for rIdx in range(blur.shape[0]):#[1:]:
+      
+    row=blur[rIdx,:]
+    setBinsToAr1D(rowHist,row)
+    fitsRow=fitGausPeaks(rowHist,fitsPeaks)
+    
+    arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
+    arFitsRow.sort()
+    arDiff=diff(arFitsRow)
+    ## wyderkat: a weak point
+    arDiff=array([x for x in arDiff if x>=minDiff])
+    
+    # one for peak positions
+    fill_hist(peaksHist, arFitsRow)
+    # one for peak distances from each other
+    fill_hist(dPeaksHist,arDiff)
+    if rIdx == 0:
+      # print fitsRow
+      # print arFitsRow
+      # print arDiff
+      # peaksHist.Draw(); raw_input("continue?\n")
+      # dPeaksHist.Draw(); raw_input("continue?\n")
+      pass
+    
+  # peaksHist.Draw(); raw_input("continue?\n")
+  # dPeaksHist.Draw(); raw_input("continue?\n")
 
 # 5) final search (no Gauss) -> aPeaks
 
-        # the peaks histo seems to need a bit of smoothing
-        # peaksHist.Smooth() # don't like the native smooth function contained in TH1
-        peaksHistAr=setAr1DtoBins(peaksHist)
-        sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-        setBinsToAr1D(peaksHist,peaksHistAr[0])
+  # the peaks histo seems to need a bit of smoothing
+  # peaksHist.Smooth() # don't like the native smooth function contained in TH1
+  peaksHistAr=setAr1DtoBins(peaksHist)
+  sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+  setBinsToAr1D(peaksHist,peaksHistAr[0])
 
-        # peaksHist.Draw(); raw_input("continue?\n")
+  # peaksHist.Draw(); raw_input("continue?\n")
 
-        # now we search the histo we made with our gauss fits for peaks and use them as our final peak locations
-        nFound = sRow.Search(peaksHist,0.33,'goff',0.025)
-        xsPeaks=sRow.GetPositionX()
-        aPeaks=rwBuf2Array(xsPeaks,nFound)
-        aPeaks.sort()
-        # print aPeaks
+  # now we search the histo we made with our gauss fits for peaks and use them as our final peak locations
+  nFound = sRow.Search(peaksHist,0.33,'goff',0.025)
+  xsPeaks=sRow.GetPositionX()
+  aPeaks=rwBuf2Array(xsPeaks,nFound)
+  aPeaks.sort()
+  # print aPeaks
 
-        # multiple peaks
-        if len(aPeaks)>1:# and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
-            
-          # dPeaks=diff(aPeaks) # was just curious how close this is to the result we get with the actual dPeaksHist
-          fitsPeaks=fitGausPeaks(peaksHist,fitsPeaks,width=10)#,showFits=True)
-          # if verbose:
-              # print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
-          
+  # multiple peaks
+  if len(aPeaks)>1:# and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
+      
+    # dPeaks=diff(aPeaks) # was just curious how close this is to the result we get with the actual dPeaksHist
+    fitsPeaks=fitGausPeaks(peaksHist,fitsPeaks,width=10)#,showFits=True)
+    # if verbose:
+        # print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
+    
 
-          # find the tallest peak in dPeaksHist and fit a gauss to it - this is our working peak distance.
-          dPmaxBin=dPeaksHist.GetMaximumBin()
-          dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
-          gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
-          dMean=gf.Value(1)
-          dMeanEr=gf.Error(1)
-          dSig=gf.Value(2)
-          dSigEr=gf.Error(2)
+    # find the tallest peak in dPeaksHist and fit a gauss to it - this is our working peak distance.
+    dPmaxBin=dPeaksHist.GetMaximumBin()
+    dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
+    gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
+    dMean=gf.Value(1)
+    dMeanEr=gf.Error(1)
+    dSig=gf.Value(2)
+    dSigEr=gf.Error(2)
+  
+  # one peak
+  else:
+    if verbose:
+      print 'One Peak ++++++'
+    
+    # we take everything for peaksHist, since a diff makes no sense with ooonly one peak.
+    # so peak spacing is actually just the location of our single peak.
+    peaksHistAr=setAr1DtoBins(peaksHist)
+    sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+    sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+    setBinsToAr1D(peaksHist,peaksHistAr[0])
+    pMaxBin=peaksHist.GetMaximumBin()
+    pMax=peaksHist.GetBinCenter(pMaxBin)
+    
+
+    gf=peaksHist.Fit('gaus','QSNO','goff',pMax-5,pMax+5)
+    
+    dMean=gf.Value(1)
+    dMeanEr=gf.Error(1)
+    dSig=gf.Value(2)
+    dSigEr=gf.Error(2)
+
+    # need something to return as peak locations
         
-        # one peak
-        else:
-          if verbose:
-            print 'One Peak ++++++'
-          
-          # we take everything for peaksHist, since a diff makes no sense with ooonly one peak.
-          # so peak spacing is actually just the location of our single peak.
-          peaksHistAr=setAr1DtoBins(peaksHist)
-          sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-          sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-          setBinsToAr1D(peaksHist,peaksHistAr[0])
-          pMaxBin=peaksHist.GetMaximumBin()
-          pMax=peaksHist.GetBinCenter(pMaxBin)
-          
+    aPeaks=zeros(1)
+    aPeaks[0]=pMax # fitGausPeaks want an np array, not a scalar.
 
-          gf=peaksHist.Fit('gaus','QSNO','goff',pMax-5,pMax+5)
-          
-          dMean=gf.Value(1)
-          dMeanEr=gf.Error(1)
-          dSig=gf.Value(2)
-          dSigEr=gf.Error(2)
+    fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
+      
 
-          # need something to return as peak locations
-              
-          aPeaks=zeros(1)
-          aPeaks[0]=pMax # fitGausPeaks want an np array, not a scalar.
-
-          fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
-            
-
-        if verbose:
-            print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
-            peaksHistAr=setAr1DtoBins(peaksHist)
-            dPeaksHistAr=setAr1DtoBins(dPeaksHist)
-            return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur,im0,peaksHistAr,dPeaksHistAr)
-        else:       
-            return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur,im0)
+  if verbose:
+      print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
+      peaksHistAr=setAr1DtoBins(peaksHist)
+      dPeaksHistAr=setAr1DtoBins(dPeaksHist)
+      return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur, image,peaksHistAr,dPeaksHistAr)
+  else:       
+      return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur, image)
         
-    except Exception, e:
-        print e
-        return None  
 
 def retrieveImage(filePath,clearVoids=False,makeU8=False,doLog=False):
     # return a np array (2dim) of a saxslab tiff file
@@ -443,11 +336,132 @@ def retrieveImage(filePath,clearVoids=False,makeU8=False,doLog=False):
         return im8
     else:
         return image
+
+def imageToPolar( image, center, polarSize ):
+
+  rowCenter=float(center[0])
+  colCenter=float(center[1])
+
+# 1) polar system
+
+  # unroll into polar coordinates
+  X,Y = indices( image.shape )
+  # print X
+  # 0 0 0 0 ...
+  # 1 1 1 1 ...
+  # ....
+  # 618 618 618
+
+  Xc=X-rowCenter
+  Yc=Y-colCenter
+  r = np.around( np.sqrt(Xc**2+Yc**2) )
+  # print r
+  #[403.  403.  402. ...,  451.  451.  452.]
+  #[ 402.  402.  401. ...,  450.  451.  451.]
+  #[ 401.  401.  400. ...,  449.  450.  450.]
+  #..., 
+  #[ 333.  332.  332. ...,  389.  390.  391.]
+  #[ 334.  333.  332. ...,  390.  391.  391.]
+  #[ 334.  334.  333. ...,  390.  391.  392.]]
+  
+
+  at3 = np.arctan2(Yc,Xc)
+  # print at3
+  #[-2.62244654 -2.62460304 -2.62676483 ...,  2.45992182  2.45820141
+  #  2.45648581]
+  #[-2.62121311 -2.62337275 -2.62553772 ...,  2.45852146  2.45680006
+  #  2.45508348]
+  #[-2.61997436 -2.62213713 -2.62430527 ...,  2.45711627  2.45539388
+  #  2.45367633]
+  #..., 
+  #[-0.64470303 -0.64229702 -0.63988231 ...,  0.81811376  0.81986726
+  #  0.82161421]
+  #[-0.64290159 -0.64049811 -0.638086   ...,  0.81624137  0.81799531
+  #  0.8197427 ]
+  #[-0.64110877 -0.63870786 -0.63629835 ...,  0.81437556  0.8161299
+  #  0.81787771]]
+  # imshow(at3)
+
+  # convert angles < 0 to positive
+  at3[ at3<0.0 ] += 2*np.pi
+  # print at3
+  #[[ 3.66073877  3.65858227  3.65642047 ...,  2.45992182  2.45820141
+  #   2.45648581]
+  # [ 3.66197219  3.65981256  3.65764759 ...,  2.45852146  2.45680006
+  #   2.45508348]
+  # [ 3.66321095  3.66104817  3.65888003 ...,  2.45711627  2.45539388
+  #   2.45367633]
+  # ..., 
+  # [ 5.63848228  5.64088829  5.643303   ...,  0.81811376  0.81986726
+  #   0.82161421]
+  # [ 5.64028372  5.64268719  5.64509931 ...,  0.81624137  0.81799531
+  #   0.8197427 ]
+  # [ 5.64207654  5.64447745  5.64688695 ...,  0.81437556  0.8161299
+  #   0.81787771]]
+  
+  # imshow(at3)
+
+  at3 *= polarSize/(2*pi)
+  # print at3
+  #[[ 52.43622032  52.40533078  52.3743653  ...,  35.23578449  35.21114147
+  #   35.1865673 ]
+  # [ 52.45388784  52.42295332  52.39194243 ...,  35.21572592  35.19106859
+  #   35.16648039]
+  # [ 52.47163174  52.44065224  52.40959592 ...,  35.19559808  35.17092658
+  #   35.14632449]
+  # ..., 
+  # [ 80.76530932  80.79977296  80.83436111 ...,  11.71861639  11.7437335
+  #   11.76875659]
+  # [ 80.79111308  80.82554031  80.86009132 ...,  11.69179645  11.71691971
+  #   11.74194925]
+  # [ 80.81679333  80.85118388  80.88569748 ...,  11.66507059  11.69019964
+  #   11.71523527]]
+
+  r = r.astype(int)
+  # print r
+  #[[403 403 402 ..., 451 451 452]
+  # [402 402 401 ..., 450 451 451]
+  # [401 401 400 ..., 449 450 450]
+  # ..., 
+  # [333 332 332 ..., 389 390 391]
+  # [334 333 332 ..., 390 391 391]
+  # [334 334 333 ..., 390 391 392]]
+
+  at3 = at3.astype(int)
+  # print at3
+  #[[52 52 52 ..., 35 35 35]
+  #[52 52 52 ..., 35 35 35]
+  #[52 52 52 ..., 35 35 35]
+  #..., 
+  #[80 80 80 ..., 11 11 11]
+  #[80 80 80 ..., 11 11 11]
+  #[80 80 80 ..., 11 11 11]]
+
+  # imp[at3,r]= image 
+  radiusSize = np.amax(r)+1
+  # print radiusSize 
+  # 453
+
+  # allocate the polar image
+  polarImage=zeros((amax(at3)+1,radiusSize))
+  # print amax(at3)+1
+  # 90
+
+
+  # Straight up broadcasting in numpy doesn't do += properly: you just get the last value that mapped to the new coords. So we lose info.
+  # polarImage[at3,r]+= image
+
+  # This one I wrote in Fortran (just because it's really easy to compile fortran modules to work with numpy), it does the proper +=, and it's full speed.
+  polarImage = polarize( image,at3,r,polarImage)
+  # show_array( polarImage )
+
+  return (polarImage, radiusSize )
+
 def main(argv=sys.argv):
     im=argv[1]
     center=(argv[2],argv[3])
     
-    p=findPeaks(im,center,verbose=True)
+    p = findPeaks( im, center, verbose=True )
     print p
     
 def show_array( a ):
