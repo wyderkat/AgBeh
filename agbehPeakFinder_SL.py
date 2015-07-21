@@ -123,29 +123,29 @@ def findPeaks(
   dPeaksHist=TH1D('dPeaksHist','dPeaks',radiusSize,0,radiusSize)
   rowHist=TH1D('rowHist','row',radiusSize,0,radiusSize)
 
+  S=TSpectrum()
 
   
 # 2) first loop -> prePeaksHist
 
   # run a gaus filter over the polar image to blend in the rough spots
   # wyderkat - not needed - but different type...
-  blur = cv2.GaussianBlur(polarImage,(3,3),0)
+  polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
   # show_array( polarImage )
 
-  sRow=TSpectrum()
 
   # first pass - roughly find all the peaks and make a histo.
-  for rIdx in range(blur.shape[0]):#[1:]:
-    # print blur.shape[0] 
+  for rIdx in range(polarImage.shape[0]):#[1:]:
+    # print polarImage.shape[0] 
     # 90
     
-    row=blur[rIdx,:]
+    row=polarImage[rIdx,:]
     if rIdx == 0:
       # show_vector(row)
       # print row
       pass
 
-    sRow.SmoothMarkov(row,len(row),smoothingWindow)
+    S.SmoothMarkov(row,len(row),smoothingWindow)
     if rIdx == 0:
       # show_vector(row)
       # print row
@@ -154,9 +154,9 @@ def findPeaks(
     # just for using it in Search()
     setBinsToAr1D(rowHist,row)
     # how many peaks
-    nFoundRow=sRow.Search(rowHist,1,'goff',peakThresh)
+    nFoundRow=S.Search(rowHist,1,'goff',peakThresh)
     # peaks positions in ROOT format...
-    xsRow=sRow.GetPositionX()
+    xsRow=S.GetPositionX()
     # peaks position in arrary
     axRow=rwBuf2Array(xsRow,nFoundRow)
     if rIdx == 0:
@@ -177,9 +177,9 @@ def findPeaks(
   # 10 times bigger because of peaksHistAr bins
   # show_vector( peaksHistAr[0] )
   
-  sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+  S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
   # show_vector( peaksHistAr[0] )
-  sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow) # second smoothing kills some outer rings
+  S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow) # second smoothing kills some outer rings
   # show_vector( peaksHistAr[0] )
                                                                         # but the trade off is false positive near 
                                                                         # beam center in the farther-out detector
@@ -187,17 +187,17 @@ def findPeaks(
   setBinsToAr1D(prePeaksHist,peaksHistAr[0])
   # prePeaksHist.Draw(); raw_input("continue?")
 
-  # look for peaks and get the gauss fits - we use this instead of the peaks found from sRow.Search
-  # bacause sRow.Search can sometimes return multiple peaks that are very close together. If we do guass
+  # look for peaks and get the gauss fits - we use this instead of the peaks found from S.Search
+  # bacause S.Search can sometimes return multiple peaks that are very close together. If we do guass
   # fits on two close together peaks, we should find the same center for both, and we can then filter them out,
   # keeping only the unique entries.
 
   # get a list of peaks in our rough peak histo
-  nFound = sRow.Search(prePeaksHist,0.33,'goff',0.025)
+  nFound = S.Search(prePeaksHist,0.33,'goff',0.025)
   if verbose:
     print nFound
   # prePeaksHist.Draw()
-  xsPeaks=sRow.GetPositionX()
+  xsPeaks=S.GetPositionX()
   aPeaks=rwBuf2Array(xsPeaks,nFound)
   # print aPeaks
   
@@ -211,9 +211,9 @@ def findPeaks(
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
   # now iterate again, and just fit each row to the set of peaks we found above
-  for rIdx in range(blur.shape[0]):#[1:]:
+  for rIdx in range(polarImage.shape[0]):#[1:]:
       
-    row=blur[rIdx,:]
+    row=polarImage[rIdx,:]
     setBinsToAr1D(rowHist,row)
     fitsRow=fitGausPeaks(rowHist,fitsPeaks)
     
@@ -243,14 +243,14 @@ def findPeaks(
   # the peaks histo seems to need a bit of smoothing
   # peaksHist.Smooth() # don't like the native smooth function contained in TH1
   peaksHistAr=setAr1DtoBins(peaksHist)
-  sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+  S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
   setBinsToAr1D(peaksHist,peaksHistAr[0])
 
   # peaksHist.Draw(); raw_input("continue?\n")
 
   # now we search the histo we made with our gauss fits for peaks and use them as our final peak locations
-  nFound = sRow.Search(peaksHist,0.33,'goff',0.025)
-  xsPeaks=sRow.GetPositionX()
+  nFound = S.Search(peaksHist,0.33,'goff',0.025)
+  xsPeaks=S.GetPositionX()
   aPeaks=rwBuf2Array(xsPeaks,nFound)
   aPeaks.sort()
   # print aPeaks
@@ -281,8 +281,8 @@ def findPeaks(
     # we take everything for peaksHist, since a diff makes no sense with ooonly one peak.
     # so peak spacing is actually just the location of our single peak.
     peaksHistAr=setAr1DtoBins(peaksHist)
-    sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-    sRow.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+    S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+    S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
     setBinsToAr1D(peaksHist,peaksHistAr[0])
     pMaxBin=peaksHist.GetMaximumBin()
     pMax=peaksHist.GetBinCenter(pMaxBin)
@@ -307,9 +307,9 @@ def findPeaks(
       print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
       peaksHistAr=setAr1DtoBins(peaksHist)
       dPeaksHistAr=setAr1DtoBins(dPeaksHist)
-      return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur, image,peaksHistAr,dPeaksHistAr)
+      return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,polarImage, image,peaksHistAr,dPeaksHistAr)
   else:       
-      return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,blur, image)
+      return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,polarImage, image)
         
 
 def retrieveImage(filePath,clearVoids=False,makeU8=False,doLog=False):
