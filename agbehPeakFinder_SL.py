@@ -120,6 +120,7 @@ def findPeaks(
   # Init the histos, now that we know how big to make them.
   peaksHist= TH1D('peaksHist','peaks',radiusSize*10,0,radiusSize)
   prePeaksHist= TH1D('prePeaksHist','prePeaksHisteaks',radiusSize*10,0,radiusSize)
+  prePeaksHistON= TH1D('prePeaksHistON','prePeaksHisteaksON',radiusSize*10,0,radiusSize)
   dPeaksHist=TH1D('dPeaksHist','dPeaks',radiusSize,0,radiusSize)
   rowHist=TH1D('rowHist','row',radiusSize,0,radiusSize)
 
@@ -133,17 +134,22 @@ def findPeaks(
   polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
   # show_array( polarImage )
 
+
+  #################################################################################
   polarImage1 = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
   # show_array( polarimage1 )
 
-  rowPeaks = np.array( [] )
-
+  rowPeaksON = np.array( [] )
   for row in polarImage1:
-    peaks = peakMarkov( row, radiusSize, firstPeak, lastPeak, peakThresh, rowHist)
-    rowPeaks = np.append( rowPeaks, peaks )
-  print rowPeaks
-  h,e = np.histogram( rowPeaks , bins=radiusSize*10, range=(0,radiusSize) )
-  # show_vector( h )
+    peaks = peakMarkov( row,  peakThresh, rowHist)
+    rowPeaksON = np.append( rowPeaksON, peaks )
+  rowPeaksON = np.array([x for x in rowPeaksON if x>=firstPeak and x<=lastPeak])
+  # print rowPeaksON
+  prePeaksH,e = np.histogram( rowPeaksON , bins=radiusSize*10, range=(0,radiusSize) )
+  prePeaksH = prePeaksH.astype( np.float )
+  # print len(prePeaksH)
+  # show_vector( prePeaksH )
+  #################################################################################
 
   # first pass - roughly find all the peaks and make a histo.
   for rIdx in range(polarImage.shape[0]):#[1:]:
@@ -179,46 +185,75 @@ def findPeaks(
   
   # prePeaksHist.Draw(); raw_input("continue?")
 
-  NEXT porownać wartości liczbowe
+
+  # TEST
+  hArr,eArr=setAr1DtoBins(prePeaksHist)
+  # print len(hArr)
+  for i in xrange( len(hArr) ):
+    if prePeaksH[i] != hArr[i]:
+      print "Mismatch at %s" % i
+
 
 # 3) proper Gauss fit -> fitsPeaks
+
+  #################################################################################
+  # show_vector( prePeaksH )
+  prePeaksH = smoothMarkov( prePeaksH, smoothingWindow )
+  # show_vector( prePeaksH )
+  prePeaksH = smoothMarkov( prePeaksH, smoothingWindow )
+  # show_vector( prePeaksH )
+  #################################################################################
 
   # clean out the noise in our rough estimate of where to look for peaks
   peaksHistAr=setAr1DtoBins(prePeaksHist)
   # print len( peaksHistAr[0] )
   # 10 times bigger because of peaksHistAr bins
-  # show_vector( peaksHistAr[0] )
+  show_vector( peaksHistAr[0] )
   
   S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-  # show_vector( peaksHistAr[0] )
-  S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow) # second smoothing kills some outer rings
-  # show_vector( peaksHistAr[0] )
-                                                                        # but the trade off is false positive near 
-                                                                        # beam center in the farther-out detector
-                                                                        # displacements. 
+  show_vector( peaksHistAr[0] )
+  S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow) 
+  show_vector( peaksHistAr[0] )
+  # second smoothing kills some outer rings
+  # but the trade off is false positive near 
+  # beam center in the farther-out detector
+  # displacements. 
+
   setBinsToAr1D(prePeaksHist,peaksHistAr[0])
   # prePeaksHist.Draw(); raw_input("continue?")
 
-  # look for peaks and get the gauss fits - we use this instead of the peaks found from S.Search
-  # bacause S.Search can sometimes return multiple peaks that are very close together. If we do guass
-  # fits on two close together peaks, we should find the same center for both, and we can then filter them out,
-  # keeping only the unique entries.
+  # TEST
+  hArr,eArr=setAr1DtoBins(prePeaksHist)
+  # print len(hArr)
+  for i in xrange( len(hArr) ):
+   if prePeaksH[i] != hArr[i]:
+     print "Mismatch2 at %s" % i
 
+  # look for peaks and get the gauss fits - we use this instead of the peaks found from S.Search bacause S.Search can
+  # sometimes return multiple peaks that are very close together. If we do guass fits on two close together peaks, we
+  # should find the same center for both, and we can then filter them out, keeping only the unique entries.
+
+  #################################################################################
+  # the new prePeaksH is not used because something is missing
+  # !!!! something wrong
+  aPeaksON = peakMarkov( prePeaksH, 0.025, prePeaksHist, param1=0.33, write=False )
+  print aPeaksON
+  #################################################################################
   # get a list of peaks in our rough peak histo
   nFound = S.Search(prePeaksHist,0.33,'goff',0.025)
-  if verbose:
-    print nFound
+  # if verbose:
+    # print nFound
   # prePeaksHist.Draw()
   xsPeaks=S.GetPositionX()
   aPeaks=rwBuf2Array(xsPeaks,nFound)
-  # print aPeaks
+  print aPeaks
   
   # get the gauss fits and filter for the unique peaks
   fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
   # print fitsPeaks
   fitsPeaks=[x[0] for x in fitsPeaks]
   fitsPeaks=unique(fitsPeaks)[0:maxNPeaks]
-  print fitsPeaks
+  # print fitsPeaks
   
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
@@ -471,23 +506,30 @@ def imageToPolar( image, center, polarSize ):
 
 # TODO !!!! Now is slower than before
 
+# do it inplace
+
 def smoothMarkov( row, window ):
-  copy = np.array( row )
+  copy = np.copy( row )
   S=TSpectrum()
   S.SmoothMarkov( copy, copy.shape[0], window )
   return copy
+
+def smoothMarkov2( row, window ):
+  copy = array( row )
+  S=TSpectrum()
+  S.SmoothMarkov( copy, copy.shape[0], window )
+  return np.array( copy )
   
-def peakMarkov( row, radiusSize, firstPeak, lastPeak, peakThresh, rowHist):
+def peakMarkov( row, peakThresh, hist, param1 = 1, write=True):
   S=TSpectrum()
   # just for using it in Search()
-  setBinsToAr1D(rowHist,row)
+  if write:
+    setBinsToAr1D(hist,row)
   # how many peaks
-  nFoundRow=S.Search(rowHist,1,'goff',peakThresh)
+  nFoundRow=S.Search(hist,param1,'goff',peakThresh)
   # peaks positions in ROOT format...
   xsRow=S.GetPositionX()
-  # peaks position in arrary
   axRow=rwBuf2Array(xsRow,nFoundRow)
-  axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
   return axRow
 
 def main(argv=sys.argv):
