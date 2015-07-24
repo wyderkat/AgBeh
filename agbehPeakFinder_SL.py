@@ -141,7 +141,7 @@ def findPeaks(
 
   rowPeaksON = np.array( [] )
   for row in polarImage1:
-    peaks = peakMarkov( row,  peakThresh, rowHist)
+    peaks = peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize)
     rowPeaksON = np.append( rowPeaksON, peaks )
   rowPeaksON = np.array([x for x in rowPeaksON if x>=firstPeak and x<=lastPeak])
   # print rowPeaksON
@@ -208,12 +208,12 @@ def findPeaks(
   peaksHistAr=setAr1DtoBins(prePeaksHist)
   # print len( peaksHistAr[0] )
   # 10 times bigger because of peaksHistAr bins
-  show_vector( peaksHistAr[0] )
+  # show_vector( peaksHistAr[0] )
   
   S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-  show_vector( peaksHistAr[0] )
+  # show_vector( peaksHistAr[0] )
   S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow) 
-  show_vector( peaksHistAr[0] )
+  # show_vector( peaksHistAr[0] )
   # second smoothing kills some outer rings
   # but the trade off is false positive near 
   # beam center in the farther-out detector
@@ -234,10 +234,8 @@ def findPeaks(
   # should find the same center for both, and we can then filter them out, keeping only the unique entries.
 
   #################################################################################
-  # the new prePeaksH is not used because something is missing
-  # !!!! something wrong
-  aPeaksON = peakMarkov( prePeaksH, 0.025, prePeaksHist, param1=0.33, write=False )
-  print aPeaksON
+  aPeaksON = peakMarkov( prePeaksH, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  # print aPeaksON
   #################################################################################
   # get a list of peaks in our rough peak histo
   nFound = S.Search(prePeaksHist,0.33,'goff',0.025)
@@ -246,11 +244,16 @@ def findPeaks(
   # prePeaksHist.Draw()
   xsPeaks=S.GetPositionX()
   aPeaks=rwBuf2Array(xsPeaks,nFound)
-  print aPeaks
+  # print aPeaks
   
+  #################################################################################
+  fitsPeaksON = peakGaus( prePeaksH, aPeaksON, 30, radiusSize*10,0,radiusSize )
+  fitsPeaksON=[x[0] for x in fitsPeaksON]
+  fitsPeaksON=unique(fitsPeaksON)[0:maxNPeaks]
+  # print fitsPeaksON
+  #################################################################################
   # get the gauss fits and filter for the unique peaks
   fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
-  # print fitsPeaks
   fitsPeaks=[x[0] for x in fitsPeaks]
   fitsPeaks=unique(fitsPeaks)[0:maxNPeaks]
   # print fitsPeaks
@@ -514,23 +517,38 @@ def smoothMarkov( row, window ):
   S.SmoothMarkov( copy, copy.shape[0], window )
   return copy
 
-def smoothMarkov2( row, window ):
-  copy = array( row )
+def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   S=TSpectrum()
-  S.SmoothMarkov( copy, copy.shape[0], window )
-  return np.array( copy )
-  
-def peakMarkov( row, peakThresh, hist, param1 = 1, write=True):
-  S=TSpectrum()
-  # just for using it in Search()
-  if write:
-    setBinsToAr1D(hist,row)
+  hist = TH1D('','',hbins, hmin, hmax)
+  setBinsToAr1D(hist,row)
   # how many peaks
-  nFoundRow=S.Search(hist,param1,'goff',peakThresh)
+  npeaks = S.Search(hist,sigma,'goff', threshold)
   # peaks positions in ROOT format...
-  xsRow=S.GetPositionX()
-  axRow=rwBuf2Array(xsRow,nFoundRow)
-  return axRow
+  posROOT = S.GetPositionX()
+  pos = rwBuf2Array( posROOT, npeaks)
+  return pos
+
+def peakGaus( row,peaks,width,hbins, hmin, hmax):
+  # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
+
+  peaks.sort()
+  fits=[]
+
+  hist = TH1D('','',hbins, hmin, hmax)
+  setBinsToAr1D(hist,row)
+
+  nBins= hist.GetNbinsX() #thists have nBins+2 bins - 0 is underflow and nBins+1 is overflow.
+  minBin= hist.GetBinCenter(1)
+  maxBin= hist.GetBinCenter(nBins)
+
+  for idx in range(len(peaks)):
+    if peaks[idx]<minBin and peaks[idx] > maxBin:
+        print 'fitGausPeaks: ERROR ***************** peak outside of histogram range.'
+        print 'Histo name: ', hist.GetName(),'\nHisto Title: ', hist.GetTitle()
+        continue
+    gf= hist.Fit('gaus','QSNO','goff',peaks[idx]-width/2.,peaks[idx]+width/2.)
+    fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
+  return fits
 
 def main(argv=sys.argv):
     im=argv[1]
