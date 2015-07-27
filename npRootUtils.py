@@ -85,10 +85,23 @@ def fitGausPeaks(th,peaks,width=30,showFits=False):
             gf=th.Fit('gaus','QS','',peaks[idx]-width/2.,peaks[idx]+width/2.)
         else:
             gf=th.Fit('gaus','QSNO','goff',peaks[idx]-width/2.,peaks[idx]+width/2.)
+            # print peaks[idx]
+            #53.2320715104
+            #107.518033347
+            #160.601812267
+            #214.335510293
+            #267.682490065
+            # print peaks[idx]-width/2.,peaks[idx]+width/2.
+            #38.2320715104 68.2320715104
+            #92.5180333473 122.518033347
+            #145.601812267 175.601812267
+            #199.335510293 229.335510293
+            #252.682490065 282.682490065
         # print 'did we fit?\t',gf
         # if gf:
             # print 'gf: ',gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)
         fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
+        # print "Vo %s n=%s m=%s x=%s" % (gf.Value(1), nBins, minBin, maxBin) 
 
         
 

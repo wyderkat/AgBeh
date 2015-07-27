@@ -136,11 +136,11 @@ def findPeaks(
 
 
   #################################################################################
-  polarImage1 = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
-  # show_array( polarimage1 )
+  polarImageON = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
+  # show_array( polarimageON )
 
   rowPeaksON = np.array( [] )
-  for row in polarImage1:
+  for row in polarImageON:
     peaks = peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize)
     rowPeaksON = np.append( rowPeaksON, peaks )
   rowPeaksON = np.array([x for x in rowPeaksON if x>=firstPeak and x<=lastPeak])
@@ -222,13 +222,6 @@ def findPeaks(
   setBinsToAr1D(prePeaksHist,peaksHistAr[0])
   # prePeaksHist.Draw(); raw_input("continue?")
 
-  # TEST
-  hArr,eArr=setAr1DtoBins(prePeaksHist)
-  # print len(hArr)
-  for i in xrange( len(hArr) ):
-   if prePeaksH[i] != hArr[i]:
-     print "Mismatch2 at %s" % i
-
   # look for peaks and get the gauss fits - we use this instead of the peaks found from S.Search bacause S.Search can
   # sometimes return multiple peaks that are very close together. If we do guass fits on two close together peaks, we
   # should find the same center for both, and we can then filter them out, keeping only the unique entries.
@@ -246,28 +239,94 @@ def findPeaks(
   aPeaks=rwBuf2Array(xsPeaks,nFound)
   # print aPeaks
   
+  # TEST
+  hArr,eArr=setAr1DtoBins(prePeaksHist)
+  # print len(hArr)
+  for i in xrange( len(hArr) ):
+   if prePeaksH[i] != hArr[i]:
+     print "Mismatch2 at %s" % i
+
+
   #################################################################################
+  # TODO better syntax
   fitsPeaksON = peakGaus( prePeaksH, aPeaksON, 30, radiusSize*10,0,radiusSize )
+  # print fitsPeaksON
   fitsPeaksON=[x[0] for x in fitsPeaksON]
-  fitsPeaksON=unique(fitsPeaksON)[0:maxNPeaks]
+  fitsPeaksON=np.unique(fitsPeaksON)[0:maxNPeaks]
   # print fitsPeaksON
   #################################################################################
   # get the gauss fits and filter for the unique peaks
   fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
-  fitsPeaks=[x[0] for x in fitsPeaks]
-  fitsPeaks=unique(fitsPeaks)[0:maxNPeaks]
+  # fitsPeaks=peakGaus(prePeaksHist,aPeaks, 30, radiusSize*10,0,radiusSize, False )
   # print fitsPeaks
+  fitsPeaks=[x[0] for x in fitsPeaks]
+  fitsPeaks=np.unique(fitsPeaks)[0:maxNPeaks]
+  # print fitsPeaks
+  print fitsPeaksON.dtype
+  print fitsPeaks.dtype
+  print np.array_equal( aPeaksON, aPeaks)
+  print np.array_equal( fitsPeaksON, fitsPeaks )
+  
+   # NEXT bit different results
+   #Fit function
+  # TODO TODO
+  # TODO TODO
+
   
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
+  #################################################################################
+  # polarImage1 = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
+  # show_array( polarimage1 )
+
+  rowPeaks2ndON = []
+  tested = False
+  testedRow = None
+  for row in polarImageON:
+    # print "New First row"
+    # print len(row)
+    # print row[200:210]
+    # print fitsPeaksON
+    peaks = peakGaus( row, fitsPeaksON, 30, radiusSize,0,radiusSize )
+    rowPeaks2ndON += peaks
+    if not tested:
+      tested = True
+      # print fitsPeaksON[0]
+      # testedRow = np.copy( row )
+  TESTrowPeaks2ndON = rowPeaks2ndON
+  # print rowPeaks2ndON
+  # print len(rowPeaks2ndON)
+  rowPeaks2ndON = np.array([x[0] for x in rowPeaks2ndON if x[0]>=firstPeak and x[0]<=lastPeak ])
+  # rowPeaks2ndON.sort()
+  # print rowPeaks2ndON
+  peaksHistON,e = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
+  peaksHistON = prePeaksH.astype( np.float )
+  # print len( peaksHistON )
+  # show_vector( peaksHistON )
+  #################################################################################
+
   # now iterate again, and just fit each row to the set of peaks we found above
+  TESTrp = []
+  tested = False
   for rIdx in range(polarImage.shape[0]):#[1:]:
       
     row=polarImage[rIdx,:]
     setBinsToAr1D(rowHist,row)
+    #if rIdx == 0:
+    #  print "First row"
+    #  print len(row)
+    #  print row[200:210]
+    #  print fitsPeaksON
+    #  rowHist.Draw(); raw_input("continue?\n")
     fitsRow=fitGausPeaks(rowHist,fitsPeaks)
+    if not tested:
+      tested = True
+      # print fitsPeaks[0]
+      # print np.array_equal( row, testedRow )
+    TESTrp += fitsRow
     
     arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
+    # TESTrp = np.append( TESTrp, arFitsRow )
     arFitsRow.sort()
     arDiff=diff(arFitsRow)
     ## wyderkat: a weak point
@@ -286,6 +345,21 @@ def findPeaks(
       pass
     
   # peaksHist.Draw(); raw_input("continue?\n")
+
+  # TEST
+  # if TESTrowPeaks2ndON != TESTrp:
+    # print "TESTrowPeaks2ndON is different"
+  #  print TESTrowPeaks2ndON[:10]
+  #  print TESTrp[:10]
+
+  # if not np.array_equal(rowPeaks2ndON, TESTrp):
+    # print "rowPeaks2ndON is different"
+
+  # hArr,eArr=setAr1DtoBins(peaksHist)
+  # print len(hArr)
+  # for i in xrange( len(hArr) ):
+    # if peaksHistON[i] != hArr[i]:
+      # print "Mismatch 3 at %s (%g %g)" % (i, peaksHistON[i], hArr[i])
   # dPeaksHist.Draw(); raw_input("continue?\n")
 
 # 5) final search (no Gauss) -> aPeaks
@@ -528,14 +602,18 @@ def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   pos = rwBuf2Array( posROOT, npeaks)
   return pos
 
-def peakGaus( row,peaks,width,hbins, hmin, hmax):
+def peakGaus( row,peaks,width,hbins, hmin, hmax, write=True):
   # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
 
   peaks.sort()
   fits=[]
 
-  hist = TH1D('','',hbins, hmin, hmax)
-  setBinsToAr1D(hist,row)
+  if write==True:
+    hist = TH1D('','',hbins, hmin, hmax)
+    setBinsToAr1D(hist,row)
+  else:
+    hist = row
+  # hist.Draw(); raw_input("continue?\n")
 
   nBins= hist.GetNbinsX() #thists have nBins+2 bins - 0 is underflow and nBins+1 is overflow.
   minBin= hist.GetBinCenter(1)
@@ -547,7 +625,28 @@ def peakGaus( row,peaks,width,hbins, hmin, hmax):
         print 'Histo name: ', hist.GetName(),'\nHisto Title: ', hist.GetTitle()
         continue
     gf= hist.Fit('gaus','QSNO','goff',peaks[idx]-width/2.,peaks[idx]+width/2.)
+    # print peaks[idx]
+
+    #53.2320715094
+    #107.518033347
+    #160.601812267
+    #214.335510293
+    #267.682490065
+
+    # print peaks[idx]-width/2.,peaks[idx]+width/2.
+    #38.25 68.25
+    #92.55 122.55
+    #145.55 175.55
+    #199.35 229.35
+    #252.65 282.65
+
+    #38.2320715094 68.2320715094
+    #92.5180333473 122.518033347
+    #145.601812267 175.601812267
+    #199.335510293 229.335510293
+    #252.682490065 282.682490065
     fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
+    # print "Vn %s n=%s m=%s x=%s" % (gf.Value(1), nBins, minBin, maxBin) 
   return fits
 
 def main(argv=sys.argv):
