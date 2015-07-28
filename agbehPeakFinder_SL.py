@@ -247,6 +247,16 @@ def findPeaks(
      print "Mismatch2 at %s" % i
 
 
+  # # Proof the Fit is not deterministic!
+  # one=fitGausPeaks(prePeaksHist,aPeaks)
+  # two=fitGausPeaks(prePeaksHist,aPeaks)
+  # three=fitGausPeaks(prePeaksHist,aPeaks)
+  # print one
+  # print two
+  # print three
+  # print np.array_equal( one, two)
+  # print np.array_equal( two, three)
+  # print np.array_equal( one, three)
   #################################################################################
   # TODO better syntax
   fitsPeaksON = peakGaus( prePeaksH, aPeaksON, 30, radiusSize*10,0,radiusSize )
@@ -257,21 +267,16 @@ def findPeaks(
   #################################################################################
   # get the gauss fits and filter for the unique peaks
   fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
-  # fitsPeaks=peakGaus(prePeaksHist,aPeaks, 30, radiusSize*10,0,radiusSize, False )
   # print fitsPeaks
   fitsPeaks=[x[0] for x in fitsPeaks]
   fitsPeaks=np.unique(fitsPeaks)[0:maxNPeaks]
   # print fitsPeaks
-  print fitsPeaksON.dtype
-  print fitsPeaks.dtype
-  print np.array_equal( aPeaksON, aPeaks)
-  print np.array_equal( fitsPeaksON, fitsPeaks )
+  # print np.array_equal( aPeaksON, aPeaks)
+  # print np.array_equal( fitsPeaksON, fitsPeaks )
+  if np.all( fitsPeaksON - fitsPeaks < 10e-7 ):
+    print "Fixing gaus fitting"
+    fitsPeaksON = fitsPeaks
   
-   # NEXT bit different results
-   #Fit function
-  # TODO TODO
-  # TODO TODO
-
   
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
