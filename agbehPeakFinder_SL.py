@@ -274,6 +274,8 @@ def findPeaks(
   # print np.array_equal( aPeaksON, aPeaks)
   # print np.array_equal( fitsPeaksON, fitsPeaks )
 
+  ########################################
+  #### TODO Gaus fix
   if np.all( fitsPeaksON - fitsPeaks < 10e-7 ):
     # print "Fixing gaus fitting"
     fitsPeaksON = fitsPeaks
@@ -310,6 +312,7 @@ def findPeaks(
       pass
 
   peaksHist.Draw(); raw_input("continue?\n")
+  # dPeaksHist.Draw(); raw_input("continue?\n")
     
   #################################################################################
   rowPeaks2ndON = []
@@ -329,7 +332,7 @@ def findPeaks(
   # rowPeaks2ndON.sort()
   # print rowPeaks2ndON
   peaksHistON,e = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
-  peaksHistON = prePeaksH.astype( np.float )
+  peaksHistON = peaksHistON.astype( np.float )
   # print len( peaksHistON )
   show_vector( peaksHistON )
   #################################################################################
@@ -350,12 +353,13 @@ def findPeaks(
   # if not np.array_equal(rowPeaks2ndON, TESTrp):
     # print "rowPeaks2ndON is different"
 
-  # hArr,eArr=setAr1DtoBins(peaksHist)
+  hArr,eArr=setAr1DtoBins(peaksHist)
   # print len(hArr)
-  # for i in xrange( len(hArr) ):
-    # if peaksHistON[i] != hArr[i]:
-      # print "Mismatch 3 at %s (%g %g)" % (i, peaksHistON[i], hArr[i])
-  # dPeaksHist.Draw(); raw_input("continue?\n")
+  for i in xrange( len(hArr) ):
+    if peaksHistON[i] != hArr[i]:
+      print "Mismatch 3 at %s (%s %s)" % (i, peaksHistON[i], hArr[i])
+
+
 
 # 5) final search (no Gauss) -> aPeaks
 
