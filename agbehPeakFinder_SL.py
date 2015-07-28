@@ -132,7 +132,7 @@ def findPeaks(
   # run a gaus filter over the polar image to blend in the rough spots
   # wyderkat - not needed - but different type...
   polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
-  # show_array( polarImage )
+  show_array( polarImage )
 
 
   #################################################################################
@@ -273,32 +273,24 @@ def findPeaks(
   # print fitsPeaks
   # print np.array_equal( aPeaksON, aPeaks)
   # print np.array_equal( fitsPeaksON, fitsPeaks )
+
   if np.all( fitsPeaksON - fitsPeaks < 10e-7 ):
-    print "Fixing gaus fitting"
+    # print "Fixing gaus fitting"
     fitsPeaksON = fitsPeaks
   
   
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
   #################################################################################
-  # polarImage1 = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
-  # show_array( polarimage1 )
-
   rowPeaks2ndON = []
   tested = False
-  testedRow = None
   for row in polarImageON:
-    # print "New First row"
-    # print len(row)
-    # print row[200:210]
-    # print fitsPeaksON
     peaks = peakGaus( row, fitsPeaksON, 30, radiusSize,0,radiusSize )
     rowPeaks2ndON += peaks
-    if not tested:
-      tested = True
-      # print fitsPeaksON[0]
-      # testedRow = np.copy( row )
-  TESTrowPeaks2ndON = rowPeaks2ndON
+    #if not tested:
+    #  tested = True
+    #  print fitsPeaksON[0]
+  TESTrowPeaks2ndON = np.copy(rowPeaks2ndON)
   # print rowPeaks2ndON
   # print len(rowPeaks2ndON)
   rowPeaks2ndON = np.array([x[0] for x in rowPeaks2ndON if x[0]>=firstPeak and x[0]<=lastPeak ])
@@ -309,6 +301,34 @@ def findPeaks(
   # print len( peaksHistON )
   # show_vector( peaksHistON )
   #################################################################################
+
+  #################################################################################
+  XrowPeaks2ndON = []
+  Xtested = False
+  for row in polarImageON:
+    peaks = peakGaus( row, fitsPeaksON, 30, radiusSize,0,radiusSize )
+    XrowPeaks2ndON += peaks
+    #if not tested:
+    #  tested = True
+    #  print fitsPeaksON[0]
+  XTESTrowPeaks2ndON = np.copy(XrowPeaks2ndON)
+  # print rowPeaks2ndON
+  # print len(rowPeaks2ndON)
+  XrowPeaks2ndON = np.array([x[0] for x in XrowPeaks2ndON if x[0]>=firstPeak and x[0]<=lastPeak ])
+  # rowPeaks2ndON.sort()
+  # print rowPeaks2ndON
+  peaksHistON,e = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
+  peaksHistON = prePeaksH.astype( np.float )
+  # print len( peaksHistON )
+  # show_vector( peaksHistON )
+  #################################################################################
+  if not np.array_equal(TESTrowPeaks2ndON, XTESTrowPeaks2ndON):
+    print "XTESTrowPeaks2ndON is different"
+    diffarr = np.abs(np.array(TESTrowPeaks2ndON) - np.array(XTESTrowPeaks2ndON))
+    show_vector( diffarr )
+  difftest = diffarr < 10e-5
+  if np.all( difftest ):
+    print "XFixing gaus fitting"
 
   # now iterate again, and just fit each row to the set of peaks we found above
   TESTrp = []
@@ -324,10 +344,16 @@ def findPeaks(
     #  print fitsPeaksON
     #  rowHist.Draw(); raw_input("continue?\n")
     fitsRow=fitGausPeaks(rowHist,fitsPeaks)
-    if not tested:
-      tested = True
-      # print fitsPeaks[0]
-      # print np.array_equal( row, testedRow )
+    #if not tested:
+    #  tested = True
+    #  print fitsPeaks[0]
+    if not np.array_equal( row, polarImageON[rIdx] ):
+      print "not equal row at %s" % rIdx
+      notequal = np.nonzero( row != polarImageON[rIdx] )
+      print row[notequal]
+      print polarImageON[rIdx][notequal]
+      break
+
     TESTrp += fitsRow
     
     arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
@@ -348,14 +374,21 @@ def findPeaks(
       # peaksHist.Draw(); raw_input("continue?\n")
       # dPeaksHist.Draw(); raw_input("continue?\n")
       pass
+  TESTrp = np.array(TESTrp)
     
   # peaksHist.Draw(); raw_input("continue?\n")
 
   # TEST
-  # if TESTrowPeaks2ndON != TESTrp:
-    # print "TESTrowPeaks2ndON is different"
-  #  print TESTrowPeaks2ndON[:10]
-  #  print TESTrp[:10]
+  if not np.array_equal( TESTrowPeaks2ndON, TESTrp):
+    print "TESTrowPeaks2ndON is different"
+    diffarr = np.abs(np.array(TESTrowPeaks2ndON) - np.array(TESTrp))
+    show_vector( diffarr )
+  difftest = diffarr < 10e-5
+  # if np.all( difftest ):
+    # print "Fixing gaus fitting"
+    # fitsPeaksON = fitsPeaks
+  # print TESTrowPeaks2ndON[:10]
+  # print TESTrp[:10]
 
   # if not np.array_equal(rowPeaks2ndON, TESTrp):
     # print "rowPeaks2ndON is different"
