@@ -338,9 +338,9 @@ def findPeaks(
   # show_vector( peaksHistON )
 
   rowDiff2ndON = rowDiff2ndON[ rowDiff2ndON>=minDiff ]
-  diffHistON,e = np.histogram( rowDiff2ndON , bins=radiusSize, range=(0,radiusSize) )
+  diffHistON,diffHistONedges = np.histogram( rowDiff2ndON , bins=radiusSize, range=(0,radiusSize) )
   diffHistON = diffHistON.astype( np.float )
-  # show_vector( diffHistON )
+  show_vector( diffHistON )
   #################################################################################
 
 
@@ -359,6 +359,8 @@ def findPeaks(
 
 # 5) final search (no Gauss) -> aPeaks
 
+  # TODO Is this logic fine ?
+
   # the peaks histo seems to need a bit of smoothing
   # peaksHist.Smooth() # don't like the native smooth function contained in TH1
   peaksHistAr=setAr1DtoBins(peaksHist)
@@ -374,6 +376,22 @@ def findPeaks(
   aPeaks.sort()
   # print aPeaks
 
+  ############################################################################
+  # TODO should be taken normal aPeaks
+  peaksHistON = smoothMarkov( peaksHistON, smoothingWindow )
+  aPeaks2ndON = peakMarkov( peaksHistON, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  aPeaks2ndON.sort()
+  # print aPeaks2ndON
+  if len(aPeaks2ndON) > 1:
+    maxbinidx = diffHistON.argmax()
+    # print "maxbinidx at %s = %s" % (maxbinidx,diffHistON[maxbinidx])
+    maxbincenter = (diffHistONedges[maxbinidx+1] + diffHistONedges[maxbinidx])/2.0
+    # print "maxbincenter=%s" % maxbincenter
+    dMeanON, dSigON, dMeanErON, dSigErOn = \
+        peak1Gaus( diffHistON, maxbincenter, 10, radiusSize,0,radiusSize )
+    print dMeanON, dSigON, dMeanErON, dSigErOn 
+  ############################################################################
+
   # multiple peaks
   if len(aPeaks)>1:# and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
       
@@ -385,7 +403,9 @@ def findPeaks(
 
     # find the tallest peak in dPeaksHist and fit a gauss to it - this is our working peak distance.
     dPmaxBin=dPeaksHist.GetMaximumBin()
+    # print "dPmaxBin=%s" % dPmaxBin
     dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
+    # print "dPmax=%s" % dPmax
     gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
     dMean=gf.Value(1)
     dMeanEr=gf.Error(1)
@@ -597,6 +617,21 @@ def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   pos = rwBuf2Array( posROOT, npeaks)
   return pos
 
+def peak1Gaus( row,peak,width,hbins, hmin, hmax, write=True):
+  # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
+
+  if write==True:
+    hist = TH1D('','',hbins, hmin, hmax)
+    setBinsToAr1D(hist,row)
+  else:
+    hist = row
+  # hist.Draw(); raw_input("continue?\n")
+
+  gf= hist.Fit('gaus','QSNO','goff',peak-width,peak+width)
+
+  return (gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2))
+
+
 def peakGaus( row,peaks,width,hbins, hmin, hmax, write=True):
   # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
 
@@ -620,26 +655,7 @@ def peakGaus( row,peaks,width,hbins, hmin, hmax, write=True):
         print 'Histo name: ', hist.GetName(),'\nHisto Title: ', hist.GetTitle()
         continue
     gf= hist.Fit('gaus','QSNO','goff',peaks[idx]-width/2.,peaks[idx]+width/2.)
-    # print peaks[idx]
 
-    #53.2320715094
-    #107.518033347
-    #160.601812267
-    #214.335510293
-    #267.682490065
-
-    # print peaks[idx]-width/2.,peaks[idx]+width/2.
-    #38.25 68.25
-    #92.55 122.55
-    #145.55 175.55
-    #199.35 229.35
-    #252.65 282.65
-
-    #38.2320715094 68.2320715094
-    #92.5180333473 122.518033347
-    #145.601812267 175.601812267
-    #199.335510293 229.335510293
-    #252.682490065 282.682490065
     fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
     # print "Vn %s n=%s m=%s x=%s" % (gf.Value(1), nBins, minBin, maxBin) 
   return fits
