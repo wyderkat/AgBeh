@@ -142,6 +142,7 @@ def findPeaks(
   rowPeaksON = np.array( [] )
   for row in polarImageON:
     peaks = peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize)
+    # TODO optimize. maybe normal array
     rowPeaksON = np.append( rowPeaksON, peaks )
   rowPeaksON = np.array([x for x in rowPeaksON if x>=firstPeak and x<=lastPeak])
   # print rowPeaksON
@@ -284,20 +285,21 @@ def findPeaks(
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
   # now iterate again, and just fit each row to the set of peaks we found above
-  fitsRowRAWLIST = []
+  arfitsRowRAWLIST = np.array([])
   for rIdx in range(polarImage.shape[0]):#[1:]:
       
     row=polarImage[rIdx,:]
     setBinsToAr1D(rowHist,row)
     fitsRow=fitGausPeaks(rowHist,fitsPeaks)
 
-    fitsRowRAWLIST += fitsRow
-    
     arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
     arFitsRow.sort()
+
+    arfitsRowRAWLIST = np.append( arfitsRowRAWLIST, arFitsRow)
+
     arDiff=diff(arFitsRow)
-    ## wyderkat: a weak point
     arDiff=array([x for x in arDiff if x>=minDiff])
+    # print arDiff
     
     # one for peak positions
     fill_hist(peaksHist, arFitsRow)
@@ -311,30 +313,39 @@ def findPeaks(
       # dPeaksHist.Draw(); raw_input("continue?\n")
       pass
 
-  peaksHist.Draw(); raw_input("continue?\n")
+  # peaksHist.Draw(); raw_input("continue?\n")
   # dPeaksHist.Draw(); raw_input("continue?\n")
     
   #################################################################################
-  rowPeaks2ndON = []
+  rowPeaks2ndON = np.array( [] )
   tested = False
   for row in polarImageON:
     peaks = peakGaus( row, fitsPeaksON, 30, radiusSize,0,radiusSize )
-    rowPeaks2ndON += peaks
+    peaks = np.array( [ x[0] for x in peaks if x[0]>=firstPeak and x[0]<=lastPeak ] )
+    peaks.sort()
+    rowPeaks2ndON = np.append(rowPeaks2ndON, peaks)
     #if not tested:
     #  tested = True
     #  print fitsPeaksON[0]
   ########################################
   #### TODO Gaus fix
-  rowPeaks2ndON = np.array(fitsRowRAWLIST)
+  rowPeaks2ndON = np.array(arfitsRowRAWLIST)
   #### TODO Gaus fix
   ########################################
-  rowPeaks2ndON = np.array([x[0] for x in rowPeaks2ndON if x[0]>=firstPeak and x[0]<=lastPeak ])
-  # rowPeaks2ndON.sort()
   # print rowPeaks2ndON
   peaksHistON,e = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
   peaksHistON = peaksHistON.astype( np.float )
   # print len( peaksHistON )
   show_vector( peaksHistON )
+  #  NEXT this has to be line by line
+  #  rowDiff2ndON = np.diff( rowPeaks2ndON )
+  #  # show_vector( rowDiff2ndON )
+  #  rowDiff2ndON = rowDiff2ndON[ rowDiff2ndON>=minDiff ]
+  #  # print rowDiff2ndON
+  #  # show_vector( rowDiff2ndON )
+  #  diffHistON,e = np.histogram( rowDiff2ndON , bins=radiusSize, range=(0,radiusSize) )
+  #  # diffHistON = diffHistON.astype( np.float )
+  #  # show_vector( diffHistON )
   #################################################################################
 
 
