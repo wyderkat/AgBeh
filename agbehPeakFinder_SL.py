@@ -327,7 +327,7 @@ def findPeaks(
     rowDiff2ndON = np.append(rowDiff2ndON, np.diff( rowPeaks2ndON ) )
   ########################################
   #### TODO Gaus fix
-  rowPeaks2ndON = np.array(arfitsRowRAWLIST)
+  # rowPeaks2ndON = np.array(arfitsRowRAWLIST)
   #### TODO Gaus fix
   ########################################
   peaksHistON,e = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
@@ -335,13 +335,9 @@ def findPeaks(
   # show_vector( peaksHistON )
 
   rowDiff2ndON = rowDiff2ndON[ rowDiff2ndON>=minDiff ]
-  show_vector( rowDiff2ndON )
-    #  # print rowDiff2ndON
-    #  # show_vector( rowDiff2ndON )
-  #  NEXT this has to be line by line
-  #  diffHistON,e = np.histogram( rowDiff2ndON , bins=radiusSize, range=(0,radiusSize) )
-  #  # diffHistON = diffHistON.astype( np.float )
-  #  # show_vector( diffHistON )
+  diffHistON,e = np.histogram( rowDiff2ndON , bins=radiusSize, range=(0,radiusSize) )
+  diffHistON = diffHistON.astype( np.float )
+  show_vector( diffHistON )
   #################################################################################
 
 
@@ -366,6 +362,11 @@ def findPeaks(
     if peaksHistON[i] != hArr[i]:
       print "Mismatch 3 at %s (%s %s)" % (i, peaksHistON[i], hArr[i])
 
+  hArr,eArr=setAr1DtoBins(dPeaksHist)
+  # print len(hArr)
+  for i in xrange( len(hArr) ):
+    if diffHistON[i] != hArr[i]:
+      print "Mismatch 4 at %s (%s %s)" % (i, diffHistON[i], hArr[i])
 
 
 # 5) final search (no Gauss) -> aPeaks
