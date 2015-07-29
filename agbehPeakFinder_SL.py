@@ -314,35 +314,31 @@ def findPeaks(
       pass
 
   # peaksHist.Draw(); raw_input("continue?\n")
-  # dPeaksHist.Draw(); raw_input("continue?\n")
+  dPeaksHist.Draw(); raw_input("continue?\n")
     
   #################################################################################
   rowPeaks2ndON = np.array( [] )
-  tested = False
+  rowDiff2ndON = np.array( [] )
   for row in polarImageON:
     peaks = peakGaus( row, fitsPeaksON, 30, radiusSize,0,radiusSize )
     peaks = np.array( [ x[0] for x in peaks if x[0]>=firstPeak and x[0]<=lastPeak ] )
     peaks.sort()
     rowPeaks2ndON = np.append(rowPeaks2ndON, peaks)
-    #if not tested:
-    #  tested = True
-    #  print fitsPeaksON[0]
+    rowDiff2ndON = np.append(rowDiff2ndON, np.diff( rowPeaks2ndON ) )
   ########################################
   #### TODO Gaus fix
   rowPeaks2ndON = np.array(arfitsRowRAWLIST)
   #### TODO Gaus fix
   ########################################
-  # print rowPeaks2ndON
   peaksHistON,e = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
   peaksHistON = peaksHistON.astype( np.float )
-  # print len( peaksHistON )
-  show_vector( peaksHistON )
+  # show_vector( peaksHistON )
+
+  rowDiff2ndON = rowDiff2ndON[ rowDiff2ndON>=minDiff ]
+  show_vector( rowDiff2ndON )
+    #  # print rowDiff2ndON
+    #  # show_vector( rowDiff2ndON )
   #  NEXT this has to be line by line
-  #  rowDiff2ndON = np.diff( rowPeaks2ndON )
-  #  # show_vector( rowDiff2ndON )
-  #  rowDiff2ndON = rowDiff2ndON[ rowDiff2ndON>=minDiff ]
-  #  # print rowDiff2ndON
-  #  # show_vector( rowDiff2ndON )
   #  diffHistON,e = np.histogram( rowDiff2ndON , bins=radiusSize, range=(0,radiusSize) )
   #  # diffHistON = diffHistON.astype( np.float )
   #  # show_vector( diffHistON )
