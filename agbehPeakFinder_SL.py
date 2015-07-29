@@ -285,7 +285,7 @@ def findPeaks(
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
   # now iterate again, and just fit each row to the set of peaks we found above
-  arfitsRowRAWLIST = np.array([])
+  peakscorr = []
   for rIdx in range(polarImage.shape[0]):#[1:]:
       
     row=polarImage[rIdx,:]
@@ -295,7 +295,7 @@ def findPeaks(
     arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
     arFitsRow.sort()
 
-    arfitsRowRAWLIST = np.append( arfitsRowRAWLIST, arFitsRow)
+    peakscorr.append(arFitsRow)
 
     arDiff=diff(arFitsRow)
     arDiff=array([x for x in arDiff if x>=minDiff])
@@ -314,22 +314,25 @@ def findPeaks(
       pass
 
   # peaksHist.Draw(); raw_input("continue?\n")
-  dPeaksHist.Draw(); raw_input("continue?\n")
+  # dPeaksHist.Draw(); raw_input("continue?\n")
     
   #################################################################################
   rowPeaks2ndON = np.array( [] )
   rowDiff2ndON = np.array( [] )
+  i = 0
   for row in polarImageON:
     peaks = peakGaus( row, fitsPeaksON, 30, radiusSize,0,radiusSize )
     peaks = np.array( [ x[0] for x in peaks if x[0]>=firstPeak and x[0]<=lastPeak ] )
     peaks.sort()
+    ########################################
+    #### TODO Gaus fix
+    peaks = peakscorr[ i ]
+    i+=1
+    #### TODO Gaus fix
+    ########################################
+
     rowPeaks2ndON = np.append(rowPeaks2ndON, peaks)
-    rowDiff2ndON = np.append(rowDiff2ndON, np.diff( rowPeaks2ndON ) )
-  ########################################
-  #### TODO Gaus fix
-  # rowPeaks2ndON = np.array(arfitsRowRAWLIST)
-  #### TODO Gaus fix
-  ########################################
+    rowDiff2ndON = np.append(rowDiff2ndON, np.diff( peaks ) )
   peaksHistON,e = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
   peaksHistON = peaksHistON.astype( np.float )
   # show_vector( peaksHistON )
@@ -337,24 +340,9 @@ def findPeaks(
   rowDiff2ndON = rowDiff2ndON[ rowDiff2ndON>=minDiff ]
   diffHistON,e = np.histogram( rowDiff2ndON , bins=radiusSize, range=(0,radiusSize) )
   diffHistON = diffHistON.astype( np.float )
-  show_vector( diffHistON )
+  # show_vector( diffHistON )
   #################################################################################
 
-
-  # TEST
-  #if not np.array_equal( TESTrowPeaks2ndON, TESTrp):
-  #  print "TESTrowPeaks2ndON is different"
-  #  diffarr = np.abs(np.array(TESTrowPeaks2ndON) - np.array(TESTrp))
-  #  show_vector( diffarr )
-  #difftest = diffarr < 10e-5
-  # if np.all( difftest ):
-    # print "Fixing gaus fitting"
-    # fitsPeaksON = fitsPeaks
-  # print TESTrowPeaks2ndON[:10]
-  # print TESTrp[:10]
-
-  # if not np.array_equal(rowPeaks2ndON, TESTrp):
-    # print "rowPeaks2ndON is different"
 
   hArr,eArr=setAr1DtoBins(peaksHist)
   # print len(hArr)
