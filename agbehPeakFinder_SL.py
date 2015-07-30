@@ -4,14 +4,10 @@ import cv2
 from ROOT import TH1D, TSpectrum
 from npRootUtils import *
 import numpy as np
-# TODO
-from numpy import *
 import sys
 from pilatus_np import JJTiff
 from polarize import polarize
 
-from time import sleep
-import matplotlib.pyplot as plt
 
 def findPeaks(
               imageOrFilename,
@@ -94,122 +90,105 @@ def findPeaks(
      Returns None on failure.
     """
 
-  if type(imageOrFilename)==str:
-    image = retrieveImage(imageOrFilename,doLog=doLogIm)
+
+  if type(imageOrFilename) == str:
+    image = retrieveImage( imageOrFilename, doLog=doLogIm)
   else:
     image = imageOrFilename
 
-  peakThresh=float(peakThresh)
-  polarSize=int(polarSize)
-  
-  firstPeak=int(firstPeak)
-  smoothingWindow=int(smoothingWindow)
-  minDiff=int(minDiff)
-  yM,xM= image.shape
-  # print yM,xM # 619 486
+  polarImage, radiusSize = imageToPolar( image, center, polarSize ) 
 
-  polarImage,radiusSize = imageToPolar( image, center, polarSize ) 
+  if lastPeak is None:
+      lastPeak=radiusSize
+  # print lastPeak # 453
 
-  if not lastPeak:
-      lastPeak=int(radiusSize)
-  else:
-      lastPeak=int(lastPeak)   
-  # print lastPeak
-  # 453
-
-# 2) first loop -> prePeaksHist
+# 1st STAGE
 
   # run a gaus filter over the polar image to blend in the rough spots
-  # wyderkat - not needed - but different type...
   polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
   # show_array( polarImage )
 
+  polarImage = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
+  # show_array( polarimage )
 
-  polarImageON = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
-  # show_array( polarimageON )
+  allpeaks1st = []
+  for row in polarImage:
+    allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
+  allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
+  # print allpeaks1st
+  hist1st,_ = np.histogram( allpeaks1st , bins=radiusSize*10, range=(0,radiusSize) )
+  # TODO can be removed when not ROOT
+  hist1st = hist1st.astype( np.float )
+  # show_vector( hist1st )
 
-  rowPeaksON = []
-  for row in polarImageON:
-    peaks = peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize)
-    rowPeaksON.extend( peaks )
-  rowPeaksON = np.array([x for x in rowPeaksON if x>=firstPeak and x<=lastPeak])
-  # print rowPeaksON
-  prePeaksH,e = np.histogram( rowPeaksON , bins=radiusSize*10, range=(0,radiusSize) )
-  prePeaksH = prePeaksH.astype( np.float )
-  # print len(prePeaksH)
-  # show_vector( prePeaksH )
 
-# 3) proper Gauss fit -> fitsPeaks
+  hist1st = smoothMarkov( hist1st, smoothingWindow )
+  # show_vector( hist1st )
+  hist1st = smoothMarkov( hist1st, smoothingWindow )
+  # show_vector( hist1st )
 
-  # show_vector( prePeaksH )
-  prePeaksH = smoothMarkov( prePeaksH, smoothingWindow )
-  # show_vector( prePeaksH )
-  prePeaksH = smoothMarkov( prePeaksH, smoothingWindow )
-  # show_vector( prePeaksH )
-
-  aPeaksON = peakMarkov( prePeaksH, 0.33, 0.025, radiusSize*10,0,radiusSize )
-  # print aPeaksON
+  peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  # print peaks1st
   
   # TODO better syntax
-  fitsPeaksON = peakGaus( prePeaksH, aPeaksON, 30, radiusSize*10,0,radiusSize )
-  # print fitsPeaksON
-  fitsPeaksON=[x[0] for x in fitsPeaksON]
-  fitsPeaksON=np.unique(fitsPeaksON)[0:maxNPeaks]
-  # print fitsPeaksON
+  peaks1st = peakGaus( hist1st, peaks1st, 30, radiusSize*10,0,radiusSize )
+  # print peaks1st
+  peaks1st = [x[0] for x in peaks1st]
+  peaks1st = np.unique(peaks1st)[0:maxNPeaks]
+  # print peaks1st
 
-# 4) second loop with Gauss fit -> peaksHist, dPeaksHist
+# 2nd STAGE
 
-  rowPeaks2ndON = []
-  rowDiff2ndON = []
-  i = 0
-  for row in polarImageON:
-    peaks = peakGaus( row, fitsPeaksON, 30, radiusSize,0,radiusSize )
+  allpeaks2nd = []
+  diffs2nd = []
+  for row in polarImage:
+    peaks = peakGaus( row, peaks1st, 30, radiusSize,0,radiusSize )
     peaks = [ x[0] for x in peaks if x[0]>=firstPeak and x[0]<=lastPeak ]
     peaks.sort()
+    allpeaks2nd.extend( peaks )
+    diffs2nd.extend( np.diff( peaks ) ) # still not a numpy array
 
-    rowPeaks2ndON.extend( peaks )
-    rowDiff2ndON.extend( np.diff( peaks ) ) # still not a numpy array
-  rowPeaks2ndON = np.array( rowPeaks2ndON )
-  rowDiff2ndON = np.array( rowDiff2ndON )
-  peaksHistON,peaksHistONedges = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
-  peaksHistON = peaksHistON.astype( np.float )
-  # show_vector( peaksHistON )
+  allpeaks2nd = np.array( allpeaks2nd )
+  # print allpeaks2nd
+  diffs2nd = np.array( diffs2nd )
 
-  rowDiff2ndON = rowDiff2ndON[ rowDiff2ndON>=minDiff ]
-  diffHistON,diffHistONedges = np.histogram( rowDiff2ndON , bins=radiusSize, range=(0,radiusSize) )
-  diffHistON = diffHistON.astype( np.float )
-  # show_vector( diffHistON )
+  hist2nd, hist2ndEdges = \
+      np.histogram( allpeaks2nd , bins=radiusSize*10, range=(0,radiusSize) )
+  # hist2nd = hist2nd.astype( np.float )
+  # show_vector( hist2nd )
 
+  diffs2nd = diffs2nd[ diffs2nd>=minDiff ]
+  diffhist2nd, diffhist2ndEdges = \
+      np.histogram( diffs2nd , bins=radiusSize, range=(0,radiusSize) )
+  # diffhist2nd = diffhist2nd.astype( np.float )
+  # show_vector( diffhist2nd )
 
-# 5) final search (no Gauss) -> aPeaks
 
   # TODO Is this logic fine ?
-
   # TODO should be taken normal aPeaks
-  peaksHistON = smoothMarkov( peaksHistON, smoothingWindow )
-  aPeaks2ndON = peakMarkov( peaksHistON, 0.33, 0.025, radiusSize*10,0,radiusSize )
-  aPeaks2ndON.sort()
-  # print aPeaks2ndON
-  if len(aPeaks2ndON) > 1:
-    maxbinidx = diffHistON.argmax()
-    # print "maxbinidx at %s = %s" % (maxbinidx,diffHistON[maxbinidx])
-    maxbincenter = (diffHistONedges[maxbinidx+1] + diffHistONedges[maxbinidx])/2.0
-    # print "maxbincenter=%s" % maxbincenter
-    dMeanON, dSigON, dMeanErON, dSigErON = \
-        peak1Gaus( diffHistON, maxbincenter, 10, radiusSize,0,radiusSize )
-    # print dMeanON, dSigON, dMeanErON, dSigErON 
+
+  hist2nd = smoothMarkov( hist2nd, smoothingWindow )
+  peaks2nd = peakMarkov( hist2nd, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  peaks2nd.sort()
+  # print peaks2nd
+  if len(peaks2nd) > 1:
+    targethist = diffhist2nd
+    targethistEdges = diffhist2ndEdges
+    width=10
+    nbins=radiusSize
   else:
-    peaksHistON = smoothMarkov( peaksHistON, smoothingWindow )
-    peaksHistON = smoothMarkov( peaksHistON, smoothingWindow )
+    hist2nd = smoothMarkov( hist2nd, smoothingWindow )
+    hist2nd = smoothMarkov( hist2nd, smoothingWindow )
+    targethist = hist2nd
+    targethistEdges = hist2ndEdges
+    width=5
+    nbins=radiusSize*10 # TODO rm when no ROOT
 
-    maxbinidx = peaksHistON.argmax()
-    # print "maxbinidx at %s = %s" % (maxbinidx,peaksHistON[maxbinidx])
-    maxbincenter = (peaksHistONedges[maxbinidx+1] + peaksHistONedges[maxbinidx])/2.0
-    # print "maxbincenter=%s" % maxbincenter
-    dMeanON, dSigON, dMeanErON, dSigErON = \
-        peak1Gaus( peaksHistON, maxbincenter, 5, radiusSize*10,0,radiusSize )
-    # print dMeanON, dSigON, dMeanErON, dSigErON 
-
+  maxbinIndex = targethist.argmax()
+  maxbinCenter = (targethistEdges[maxbinIndex] + targethistEdges[maxbinIndex+1])/2.0
+  dMeanON, dSigON, dMeanErON, dSigErON = \
+      peak1Gaus( targethist, maxbinCenter, width, nbins,0,radiusSize )
+  # print dMeanON, dSigON, dMeanErON, dSigErON 
 
   return (dMeanON, dSigON, dMeanErON, dSigErON,polarImage, image)
         
@@ -306,6 +285,7 @@ def imageToPolar( image, center, polarSize ):
   
   # imshow(at3)
 
+  # TODO is this float?
   at3 *= polarSize/(2*pi)
   # print at3
   #[[ 52.43622032  52.40533078  52.3743653  ...,  35.23578449  35.21114147
@@ -433,6 +413,8 @@ def main(argv=sys.argv):
     p = findPeaks( im, center, verbose=True )
     print p[:4]
     
+import matplotlib.pyplot as plt
+
 def show_array( a ):
   plt.imshow( a )
   plt.colorbar(orientation='horizontal')
