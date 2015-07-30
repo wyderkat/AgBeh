@@ -117,14 +117,13 @@ def findPeaks(
   # print lastPeak
   # 453
 
-  # Init the histos, now that we know how big to make them.
-  peaksHist= TH1D('peaksHist','peaks',radiusSize*10,0,radiusSize)
-  prePeaksHist= TH1D('prePeaksHist','prePeaksHisteaks',radiusSize*10,0,radiusSize)
-  prePeaksHistON= TH1D('prePeaksHistON','prePeaksHisteaksON',radiusSize*10,0,radiusSize)
-  dPeaksHist=TH1D('dPeaksHist','dPeaks',radiusSize,0,radiusSize)
-  rowHist=TH1D('rowHist','row',radiusSize,0,radiusSize)
+  ### # Init the histos, now that we know how big to make them.
+  ### peaksHist= TH1D('peaksHist','peaks',radiusSize*10,0,radiusSize)
+  ### prePeaksHist= TH1D('prePeaksHist','prePeaksHisteaks',radiusSize*10,0,radiusSize)
+  ### dPeaksHist=TH1D('dPeaksHist','dPeaks',radiusSize,0,radiusSize)
+  ### rowHist=TH1D('rowHist','row',radiusSize,0,radiusSize)
 
-  S=TSpectrum()
+  ### S=TSpectrum()
 
   
 # 2) first loop -> prePeaksHist
@@ -152,47 +151,47 @@ def findPeaks(
   # show_vector( prePeaksH )
   #################################################################################
 
-  # first pass - roughly find all the peaks and make a histo.
-  for rIdx in range(polarImage.shape[0]):#[1:]:
-    # print polarImage.shape[0] 
-    # 90
-    
-    row=polarImage[rIdx,:]
-    if rIdx == 0:
-      # show_vector(row)
-      # print row
-      pass
+  ### # first pass - roughly find all the peaks and make a histo.
+  ### for rIdx in range(polarImage.shape[0]):#[1:]:
+  ###   # print polarImage.shape[0] 
+  ###   # 90
+  ###   
+  ###   row=polarImage[rIdx,:]
+  ###   if rIdx == 0:
+  ###     # show_vector(row)
+  ###     # print row
+  ###     pass
 
-    S.SmoothMarkov(row,len(row),smoothingWindow)
-    if rIdx == 0:
-      # show_vector(row)
-      # print row
-      pass
+  ###   S.SmoothMarkov(row,len(row),smoothingWindow)
+  ###   if rIdx == 0:
+  ###     # show_vector(row)
+  ###     # print row
+  ###     pass
 
-    # just for using it in Search()
-    setBinsToAr1D(rowHist,row)
-    # how many peaks
-    nFoundRow=S.Search(rowHist,1,'goff',peakThresh)
-    # peaks positions in ROOT format...
-    xsRow=S.GetPositionX()
-    # peaks position in arrary
-    axRow=rwBuf2Array(xsRow,nFoundRow)
-    if rIdx == 0:
-      # print axRow
-      pass
-    axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
-    fill_hist(prePeaksHist, axRow)
+  ###   # just for using it in Search()
+  ###   setBinsToAr1D(rowHist,row)
+  ###   # how many peaks
+  ###   nFoundRow=S.Search(rowHist,1,'goff',peakThresh)
+  ###   # peaks positions in ROOT format...
+  ###   xsRow=S.GetPositionX()
+  ###   # peaks position in arrary
+  ###   axRow=rwBuf2Array(xsRow,nFoundRow)
+  ###   if rIdx == 0:
+  ###     # print axRow
+  ###     pass
+  ###   axRow=array([x for x in axRow if x>=firstPeak and x<=lastPeak])
+  ###   fill_hist(prePeaksHist, axRow)
 
-  
-  # prePeaksHist.Draw(); raw_input("continue?")
+  ### 
+  ### # prePeaksHist.Draw(); raw_input("continue?")
 
 
-  # TEST
-  hArr,eArr=setAr1DtoBins(prePeaksHist)
-  # print len(hArr)
-  for i in xrange( len(hArr) ):
-    if prePeaksH[i] != hArr[i]:
-      print "Mismatch at %s" % i
+  ## # TEST
+  ## hArr,eArr=setAr1DtoBins(prePeaksHist)
+  ## # print len(hArr)
+  ## for i in xrange( len(hArr) ):
+  ##   if prePeaksH[i] != hArr[i]:
+  ##     print "Mismatch at %s" % i
 
 
 # 3) proper Gauss fit -> fitsPeaks
@@ -205,59 +204,59 @@ def findPeaks(
   # show_vector( prePeaksH )
   #################################################################################
 
-  # clean out the noise in our rough estimate of where to look for peaks
-  peaksHistAr=setAr1DtoBins(prePeaksHist)
-  # print len( peaksHistAr[0] )
-  # 10 times bigger because of peaksHistAr bins
-  # show_vector( peaksHistAr[0] )
-  
-  S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-  # show_vector( peaksHistAr[0] )
-  S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow) 
-  # show_vector( peaksHistAr[0] )
-  # second smoothing kills some outer rings
-  # but the trade off is false positive near 
-  # beam center in the farther-out detector
-  # displacements. 
+  ### # clean out the noise in our rough estimate of where to look for peaks
+  ### peaksHistAr=setAr1DtoBins(prePeaksHist)
+  ### # print len( peaksHistAr[0] )
+  ### # 10 times bigger because of peaksHistAr bins
+  ### # show_vector( peaksHistAr[0] )
+  ### 
+  ### S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+  ### # show_vector( peaksHistAr[0] )
+  ### S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow) 
+  ### # show_vector( peaksHistAr[0] )
+  ### # second smoothing kills some outer rings
+  ### # but the trade off is false positive near 
+  ### # beam center in the farther-out detector
+  ### # displacements. 
 
-  setBinsToAr1D(prePeaksHist,peaksHistAr[0])
-  # prePeaksHist.Draw(); raw_input("continue?")
+  ### setBinsToAr1D(prePeaksHist,peaksHistAr[0])
+  ### # prePeaksHist.Draw(); raw_input("continue?")
 
-  # look for peaks and get the gauss fits - we use this instead of the peaks found from S.Search bacause S.Search can
-  # sometimes return multiple peaks that are very close together. If we do guass fits on two close together peaks, we
-  # should find the same center for both, and we can then filter them out, keeping only the unique entries.
+  ### # look for peaks and get the gauss fits - we use this instead of the peaks found from S.Search bacause S.Search can
+  ### # sometimes return multiple peaks that are very close together. If we do guass fits on two close together peaks, we
+  ### # should find the same center for both, and we can then filter them out, keeping only the unique entries.
 
   #################################################################################
   aPeaksON = peakMarkov( prePeaksH, 0.33, 0.025, radiusSize*10,0,radiusSize )
   # print aPeaksON
   #################################################################################
-  # get a list of peaks in our rough peak histo
-  nFound = S.Search(prePeaksHist,0.33,'goff',0.025)
-  # if verbose:
-    # print nFound
-  # prePeaksHist.Draw()
-  xsPeaks=S.GetPositionX()
-  aPeaks=rwBuf2Array(xsPeaks,nFound)
-  # print aPeaks
+  ### # get a list of peaks in our rough peak histo
+  ### nFound = S.Search(prePeaksHist,0.33,'goff',0.025)
+  ### # if verbose:
+  ###   # print nFound
+  ### # prePeaksHist.Draw()
+  ### xsPeaks=S.GetPositionX()
+  ### aPeaks=rwBuf2Array(xsPeaks,nFound)
+  ### # print aPeaks
   
-  # TEST
-  hArr,eArr=setAr1DtoBins(prePeaksHist)
-  # print len(hArr)
-  for i in xrange( len(hArr) ):
-   if prePeaksH[i] != hArr[i]:
-     print "Mismatch2 at %s" % i
+  ## # TEST
+  ## hArr,eArr=setAr1DtoBins(prePeaksHist)
+  ## # print len(hArr)
+  ## for i in xrange( len(hArr) ):
+  ##  if prePeaksH[i] != hArr[i]:
+  ##    print "Mismatch2 at %s" % i
 
 
-  # # Proof the Fit is not deterministic!
-  # one=fitGausPeaks(prePeaksHist,aPeaks)
-  # two=fitGausPeaks(prePeaksHist,aPeaks)
-  # three=fitGausPeaks(prePeaksHist,aPeaks)
-  # print one
-  # print two
-  # print three
-  # print np.array_equal( one, two)
-  # print np.array_equal( two, three)
-  # print np.array_equal( one, three)
+  ## # # Proof the Fit is not deterministic!
+  ## # one=fitGausPeaks(prePeaksHist,aPeaks)
+  ## # two=fitGausPeaks(prePeaksHist,aPeaks)
+  ## # three=fitGausPeaks(prePeaksHist,aPeaks)
+  ## # print one
+  ## # print two
+  ## # print three
+  ## # print np.array_equal( one, two)
+  ## # print np.array_equal( two, three)
+  ## # print np.array_equal( one, three)
   #################################################################################
   # TODO better syntax
   fitsPeaksON = peakGaus( prePeaksH, aPeaksON, 30, radiusSize*10,0,radiusSize )
@@ -266,55 +265,55 @@ def findPeaks(
   fitsPeaksON=np.unique(fitsPeaksON)[0:maxNPeaks]
   # print fitsPeaksON
   #################################################################################
-  # get the gauss fits and filter for the unique peaks
-  fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
-  # print fitsPeaks
-  fitsPeaks=[x[0] for x in fitsPeaks]
-  fitsPeaks=np.unique(fitsPeaks)[0:maxNPeaks]
-  # print fitsPeaks
-  # print np.array_equal( aPeaksON, aPeaks)
-  # print np.array_equal( fitsPeaksON, fitsPeaks )
+  ### # get the gauss fits and filter for the unique peaks
+  ### fitsPeaks=fitGausPeaks(prePeaksHist,aPeaks)#,showFits=True)
+  ### # print fitsPeaks
+  ### fitsPeaks=[x[0] for x in fitsPeaks]
+  ### fitsPeaks=np.unique(fitsPeaks)[0:maxNPeaks]
+  ### # print fitsPeaks
+  ### # print np.array_equal( aPeaksON, aPeaks)
+  ### # print np.array_equal( fitsPeaksON, fitsPeaks )
 
-  ########################################
-  #### TODO Gaus fix
-  if np.all( fitsPeaksON - fitsPeaks < 10e-7 ):
-    # print "Fixing gaus fitting"
-    fitsPeaksON = fitsPeaks
+  ## ########################################
+  ## #### TODO Gaus fix
+  ## if np.all( fitsPeaksON - fitsPeaks < 10e-7 ):
+  ##   # print "Fixing gaus fitting"
+  ##   fitsPeaksON = fitsPeaks
   
   
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
-  # now iterate again, and just fit each row to the set of peaks we found above
-  peakscorr = []
-  for rIdx in range(polarImage.shape[0]):#[1:]:
-      
-    row=polarImage[rIdx,:]
-    setBinsToAr1D(rowHist,row)
-    fitsRow=fitGausPeaks(rowHist,fitsPeaks)
+  ### # now iterate again, and just fit each row to the set of peaks we found above
+  ### peakscorr = []
+  ### for rIdx in range(polarImage.shape[0]):#[1:]:
+  ###     
+  ###   row=polarImage[rIdx,:]
+  ###   setBinsToAr1D(rowHist,row)
+  ###   fitsRow=fitGausPeaks(rowHist,fitsPeaks)
 
-    arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
-    arFitsRow.sort()
+  ###   arFitsRow=array([x[0] for x in fitsRow if x[0]>=firstPeak and x[0]<=lastPeak ])
+  ###   arFitsRow.sort()
 
-    peakscorr.append(arFitsRow)
+  ###   peakscorr.append(arFitsRow)
 
-    arDiff=diff(arFitsRow)
-    arDiff=array([x for x in arDiff if x>=minDiff])
-    # print arDiff
-    
-    # one for peak positions
-    fill_hist(peaksHist, arFitsRow)
-    # one for peak distances from each other
-    fill_hist(dPeaksHist,arDiff)
-    if rIdx == 0:
-      # print fitsRow
-      # print arFitsRow
-      # print arDiff
-      # peaksHist.Draw(); raw_input("continue?\n")
-      # dPeaksHist.Draw(); raw_input("continue?\n")
-      pass
+  ###   arDiff=diff(arFitsRow)
+  ###   arDiff=array([x for x in arDiff if x>=minDiff])
+  ###   # print arDiff
+  ###   
+  ###   # one for peak positions
+  ###   fill_hist(peaksHist, arFitsRow)
+  ###   # one for peak distances from each other
+  ###   fill_hist(dPeaksHist,arDiff)
+  ###   if rIdx == 0:
+  ###     # print fitsRow
+  ###     # print arFitsRow
+  ###     # print arDiff
+  ###     # peaksHist.Draw(); raw_input("continue?\n")
+  ###     # dPeaksHist.Draw(); raw_input("continue?\n")
+  ###     pass
 
-  # peaksHist.Draw(); raw_input("continue?\n")
-  # dPeaksHist.Draw(); raw_input("continue?\n")
+  ### # peaksHist.Draw(); raw_input("continue?\n")
+  ### # dPeaksHist.Draw(); raw_input("continue?\n")
     
   #################################################################################
   rowPeaks2ndON = np.array( [] )
@@ -324,12 +323,12 @@ def findPeaks(
     peaks = peakGaus( row, fitsPeaksON, 30, radiusSize,0,radiusSize )
     peaks = np.array( [ x[0] for x in peaks if x[0]>=firstPeak and x[0]<=lastPeak ] )
     peaks.sort()
-    ########################################
-    #### TODO Gaus fix
-    peaks = peakscorr[ i ]
-    i+=1
-    #### TODO Gaus fix
-    ########################################
+    ## ########################################
+    ## #### TODO Gaus fix
+    ## peaks = peakscorr[ i ]
+    ## i+=1
+    ## #### TODO Gaus fix
+    ## ########################################
 
     rowPeaks2ndON = np.append(rowPeaks2ndON, peaks)
     rowDiff2ndON = np.append(rowDiff2ndON, np.diff( peaks ) )
@@ -344,37 +343,37 @@ def findPeaks(
   #################################################################################
 
 
-  hArr,eArr=setAr1DtoBins(peaksHist)
-  # print len(hArr)
-  for i in xrange( len(hArr) ):
-    if peaksHistON[i] != hArr[i]:
-      print "Mismatch 3 at %s (%s %s)" % (i, peaksHistON[i], hArr[i])
+  ## hArr,eArr=setAr1DtoBins(peaksHist)
+  ## # print len(hArr)
+  ## for i in xrange( len(hArr) ):
+  ##   if peaksHistON[i] != hArr[i]:
+  ##     print "Mismatch 3 at %s (%s %s)" % (i, peaksHistON[i], hArr[i])
 
-  hArr,eArr=setAr1DtoBins(dPeaksHist)
-  # print len(hArr)
-  for i in xrange( len(hArr) ):
-    if diffHistON[i] != hArr[i]:
-      print "Mismatch 4 at %s (%s %s)" % (i, diffHistON[i], hArr[i])
+  ## hArr,eArr=setAr1DtoBins(dPeaksHist)
+  ## # print len(hArr)
+  ## for i in xrange( len(hArr) ):
+  ##   if diffHistON[i] != hArr[i]:
+  ##     print "Mismatch 4 at %s (%s %s)" % (i, diffHistON[i], hArr[i])
 
 
 # 5) final search (no Gauss) -> aPeaks
 
   # TODO Is this logic fine ?
 
-  # the peaks histo seems to need a bit of smoothing
-  # peaksHist.Smooth() # don't like the native smooth function contained in TH1
-  peaksHistAr=setAr1DtoBins(peaksHist)
-  S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-  setBinsToAr1D(peaksHist,peaksHistAr[0])
+  ### # the peaks histo seems to need a bit of smoothing
+  ### # peaksHist.Smooth() # don't like the native smooth function contained in TH1
+  ### peaksHistAr=setAr1DtoBins(peaksHist)
+  ### S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+  ### setBinsToAr1D(peaksHist,peaksHistAr[0])
 
-  # peaksHist.Draw(); raw_input("continue?\n")
+  ### # peaksHist.Draw(); raw_input("continue?\n")
 
-  # now we search the histo we made with our gauss fits for peaks and use them as our final peak locations
-  nFound = S.Search(peaksHist,0.33,'goff',0.025)
-  xsPeaks=S.GetPositionX()
-  aPeaks=rwBuf2Array(xsPeaks,nFound)
-  aPeaks.sort()
-  # print aPeaks
+  ### # now we search the histo we made with our gauss fits for peaks and use them as our final peak locations
+  ### nFound = S.Search(peaksHist,0.33,'goff',0.025)
+  ### xsPeaks=S.GetPositionX()
+  ### aPeaks=rwBuf2Array(xsPeaks,nFound)
+  ### aPeaks.sort()
+  ### # print aPeaks
 
   ############################################################################
   # TODO should be taken normal aPeaks
@@ -387,9 +386,9 @@ def findPeaks(
     # print "maxbinidx at %s = %s" % (maxbinidx,diffHistON[maxbinidx])
     maxbincenter = (diffHistONedges[maxbinidx+1] + diffHistONedges[maxbinidx])/2.0
     # print "maxbincenter=%s" % maxbincenter
-    dMeanON, dSigON, dMeanErON, dSigErOn = \
+    dMeanON, dSigON, dMeanErON, dSigErON = \
         peak1Gaus( diffHistON, maxbincenter, 10, radiusSize,0,radiusSize )
-    print dMeanON, dSigON, dMeanErON, dSigErOn 
+    # print dMeanON, dSigON, dMeanErON, dSigErON 
   else:
     peaksHistON = smoothMarkov( peaksHistON, smoothingWindow )
     peaksHistON = smoothMarkov( peaksHistON, smoothingWindow )
@@ -398,75 +397,71 @@ def findPeaks(
     # print "maxbinidx at %s = %s" % (maxbinidx,peaksHistON[maxbinidx])
     maxbincenter = (peaksHistONedges[maxbinidx+1] + peaksHistONedges[maxbinidx])/2.0
     # print "maxbincenter=%s" % maxbincenter
-    dMeanON, dSigON, dMeanErON, dSigErOn = \
+    dMeanON, dSigON, dMeanErON, dSigErON = \
         peak1Gaus( peaksHistON, maxbincenter, 5, radiusSize*10,0,radiusSize )
-    # print dMeanON, dSigON, dMeanErON, dSigErOn 
+    # print dMeanON, dSigON, dMeanErON, dSigErON 
 
   ############################################################################
 
-  # multiple peaks
-  if len(aPeaks)>1:# and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
-      
-    # dPeaks=diff(aPeaks) # was just curious how close this is to the result we get with the actual dPeaksHist
-    fitsPeaks=fitGausPeaks(peaksHist,fitsPeaks,width=10)#,showFits=True)
-    # if verbose:
-        # print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
-    
+  ### # multiple peaks
+  ### if len(aPeaks)>1:# and std(diff(aPeaks))<1.0 and std(diff(aPeaks))<1.0 !=0:
+  ###     
+  ###   # dPeaks=diff(aPeaks) # was just curious how close this is to the result we get with the actual dPeaksHist
+  ###   fitsPeaks=fitGausPeaks(peaksHist,fitsPeaks,width=10)#,showFits=True)
+  ###   # if verbose:
+  ###       # print 'mean peaks diff: ',mean(dPeaks),' sig: ',std(dPeaks)
+  ###   
 
-    # find the tallest peak in dPeaksHist and fit a gauss to it - this is our working peak distance.
-    dPmaxBin=dPeaksHist.GetMaximumBin()
-    # print "dPmaxBin=%s" % dPmaxBin
-    dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
-    # print "dPmax=%s" % dPmax
-    gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
-    dMean=gf.Value(1)
-    dMeanEr=gf.Error(1)
-    dSig=gf.Value(2)
-    dSigEr=gf.Error(2)
-  
-  # one peak
-  else:
-    if verbose:
-      print 'One Peak ++++++'
+  ###   # find the tallest peak in dPeaksHist and fit a gauss to it - this is our working peak distance.
+  ###   dPmaxBin=dPeaksHist.GetMaximumBin()
+  ###   # print "dPmaxBin=%s" % dPmaxBin
+  ###   dPmax=dPeaksHist.GetBinCenter(dPmaxBin)
+  ###   # print "dPmax=%s" % dPmax
+  ###   gf=dPeaksHist.Fit('gaus','QSNO','goff',dPmax-10,dPmax+10)
+  ###   dMean=gf.Value(1)
+  ###   dMeanEr=gf.Error(1)
+  ###   dSig=gf.Value(2)
+  ###   dSigEr=gf.Error(2)
+  ### 
+  ### # one peak
+  ### else:
+  ###   if verbose:
+  ###     print 'One Peak ++++++'
+  ###   # we take everything for peaksHist, since a diff makes no sense with ooonly one peak.
+  ###   # so peak spacing is actually just the location of our single peak.
+  ###   peaksHistAr=setAr1DtoBins(peaksHist)
+  ###   S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+  ###   S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
+  ###   setBinsToAr1D(peaksHist,peaksHistAr[0])
+  ###   pMaxBin=peaksHist.GetMaximumBin()
+  ###   # print "pMaxBin=%s" % pMaxBin
+  ###   pMax=peaksHist.GetBinCenter(pMaxBin)
+  ###   # print "pMax=%s" % pMax
+  ###   
 
-    
-    # we take everything for peaksHist, since a diff makes no sense with ooonly one peak.
-    # so peak spacing is actually just the location of our single peak.
-    peaksHistAr=setAr1DtoBins(peaksHist)
-    S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-    S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
-    setBinsToAr1D(peaksHist,peaksHistAr[0])
-    pMaxBin=peaksHist.GetMaximumBin()
-    # print "pMaxBin=%s" % pMaxBin
-    pMax=peaksHist.GetBinCenter(pMaxBin)
-    # print "pMax=%s" % pMax
-    
+  ###   gf=peaksHist.Fit('gaus','QSNO','goff',pMax-5,pMax+5)
+  ###   
+  ###   dMean=gf.Value(1)
+  ###   dMeanEr=gf.Error(1)
+  ###   dSig=gf.Value(2)
+  ###   dSigEr=gf.Error(2)
 
-    gf=peaksHist.Fit('gaus','QSNO','goff',pMax-5,pMax+5)
-    
-    dMean=gf.Value(1)
-    dMeanEr=gf.Error(1)
-    dSig=gf.Value(2)
-    dSigEr=gf.Error(2)
+  ###   # need something to return as peak locations
+  ###       
+  ###   aPeaks=zeros(1)
+  ###   aPeaks[0]=pMax # fitGausPeaks want an np array, not a scalar.
 
-    # need something to return as peak locations
-        
-    aPeaks=zeros(1)
-    aPeaks[0]=pMax # fitGausPeaks want an np array, not a scalar.
-
-    fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
+  ###   fitsPeaks=fitGausPeaks(peaksHist,aPeaks,width=10)
       
 
-  if verbose:
-      print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
-      peaksHistAr=setAr1DtoBins(peaksHist)
-      dPeaksHistAr=setAr1DtoBins(dPeaksHist)
-      return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,polarImage, image,peaksHistAr,dPeaksHistAr)
-  else:       
-      return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,polarImage, image)
-    ################
-      # return (dMeanON, dSigON, dMeanErON, dSigErON,polarImage, image)
-    ################
+  ### if verbose:
+  ###     print '\nMean Spacing : ',dMean,' +/- ',dMeanEr,'\nSigma        : ',dSig, '+/- ',dSigEr
+  ###     peaksHistAr=setAr1DtoBins(peaksHist)
+  ###     dPeaksHistAr=setAr1DtoBins(dPeaksHist)
+  ###     return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,polarImage, image,peaksHistAr,dPeaksHistAr)
+  ### else:       
+  ###     return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,polarImage, image)
+  return (dMeanON, dSigON, dMeanErON, dSigErON,polarImage, image)
         
 
 def retrieveImage(filePath,clearVoids=False,makeU8=False,doLog=False):
@@ -683,7 +678,7 @@ def main(argv=sys.argv):
     center=(argv[2],argv[3])
     
     p = findPeaks( im, center, verbose=True )
-    # print p
+    print p[:4]
     
 def show_array( a ):
   plt.imshow( a )
