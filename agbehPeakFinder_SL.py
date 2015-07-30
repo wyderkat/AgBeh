@@ -333,14 +333,14 @@ def findPeaks(
 
     rowPeaks2ndON = np.append(rowPeaks2ndON, peaks)
     rowDiff2ndON = np.append(rowDiff2ndON, np.diff( peaks ) )
-  peaksHistON,e = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
+  peaksHistON,peaksHistONedges = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
   peaksHistON = peaksHistON.astype( np.float )
   # show_vector( peaksHistON )
 
   rowDiff2ndON = rowDiff2ndON[ rowDiff2ndON>=minDiff ]
   diffHistON,diffHistONedges = np.histogram( rowDiff2ndON , bins=radiusSize, range=(0,radiusSize) )
   diffHistON = diffHistON.astype( np.float )
-  show_vector( diffHistON )
+  # show_vector( diffHistON )
   #################################################################################
 
 
@@ -390,6 +390,18 @@ def findPeaks(
     dMeanON, dSigON, dMeanErON, dSigErOn = \
         peak1Gaus( diffHistON, maxbincenter, 10, radiusSize,0,radiusSize )
     print dMeanON, dSigON, dMeanErON, dSigErOn 
+  else:
+    peaksHistON = smoothMarkov( peaksHistON, smoothingWindow )
+    peaksHistON = smoothMarkov( peaksHistON, smoothingWindow )
+
+    maxbinidx = peaksHistON.argmax()
+    # print "maxbinidx at %s = %s" % (maxbinidx,peaksHistON[maxbinidx])
+    maxbincenter = (peaksHistONedges[maxbinidx+1] + peaksHistONedges[maxbinidx])/2.0
+    # print "maxbincenter=%s" % maxbincenter
+    dMeanON, dSigON, dMeanErON, dSigErOn = \
+        peak1Gaus( peaksHistON, maxbincenter, 5, radiusSize*10,0,radiusSize )
+    # print dMeanON, dSigON, dMeanErON, dSigErOn 
+
   ############################################################################
 
   # multiple peaks
@@ -416,6 +428,7 @@ def findPeaks(
   else:
     if verbose:
       print 'One Peak ++++++'
+
     
     # we take everything for peaksHist, since a diff makes no sense with ooonly one peak.
     # so peak spacing is actually just the location of our single peak.
@@ -424,7 +437,9 @@ def findPeaks(
     S.SmoothMarkov(peaksHistAr[0],len(peaksHistAr[0]),smoothingWindow)
     setBinsToAr1D(peaksHist,peaksHistAr[0])
     pMaxBin=peaksHist.GetMaximumBin()
+    # print "pMaxBin=%s" % pMaxBin
     pMax=peaksHist.GetBinCenter(pMaxBin)
+    # print "pMax=%s" % pMax
     
 
     gf=peaksHist.Fit('gaus','QSNO','goff',pMax-5,pMax+5)
@@ -449,6 +464,9 @@ def findPeaks(
       return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,polarImage, image,peaksHistAr,dPeaksHistAr)
   else:       
       return (dMean, dSig, dMeanEr, dSigEr,fitsPeaks,polarImage, image)
+    ################
+      # return (dMeanON, dSigON, dMeanErON, dSigErON,polarImage, image)
+    ################
         
 
 def retrieveImage(filePath,clearVoids=False,makeU8=False,doLog=False):
