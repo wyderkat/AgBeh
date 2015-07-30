@@ -128,11 +128,10 @@ def findPeaks(
   polarImageON = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
   # show_array( polarimageON )
 
-  rowPeaksON = np.array( [] )
+  rowPeaksON = []
   for row in polarImageON:
     peaks = peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize)
-    # TODO optimize. maybe normal array
-    rowPeaksON = np.append( rowPeaksON, peaks )
+    rowPeaksON.extend( peaks )
   rowPeaksON = np.array([x for x in rowPeaksON if x>=firstPeak and x<=lastPeak])
   # print rowPeaksON
   prePeaksH,e = np.histogram( rowPeaksON , bins=radiusSize*10, range=(0,radiusSize) )
@@ -160,16 +159,18 @@ def findPeaks(
 
 # 4) second loop with Gauss fit -> peaksHist, dPeaksHist
 
-  rowPeaks2ndON = np.array( [] )
-  rowDiff2ndON = np.array( [] )
+  rowPeaks2ndON = []
+  rowDiff2ndON = []
   i = 0
   for row in polarImageON:
     peaks = peakGaus( row, fitsPeaksON, 30, radiusSize,0,radiusSize )
-    peaks = np.array( [ x[0] for x in peaks if x[0]>=firstPeak and x[0]<=lastPeak ] )
+    peaks = [ x[0] for x in peaks if x[0]>=firstPeak and x[0]<=lastPeak ]
     peaks.sort()
 
-    rowPeaks2ndON = np.append(rowPeaks2ndON, peaks)
-    rowDiff2ndON = np.append(rowDiff2ndON, np.diff( peaks ) )
+    rowPeaks2ndON.extend( peaks )
+    rowDiff2ndON.extend( np.diff( peaks ) ) # still not a numpy array
+  rowPeaks2ndON = np.array( rowPeaks2ndON )
+  rowDiff2ndON = np.array( rowDiff2ndON )
   peaksHistON,peaksHistONedges = np.histogram( rowPeaks2ndON , bins=radiusSize*10, range=(0,radiusSize) )
   peaksHistON = peaksHistON.astype( np.float )
   # show_vector( peaksHistON )
