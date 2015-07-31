@@ -427,9 +427,8 @@ def show_vector( v ):
 
 import unittest
 
-class a_testcase(unittest.TestCase):
 
-  def test_4(me):
+def test():
 
     files = [ 
       (142, (53.84568342941077, 0.8622330357987071, 0.05311658514998754, 0.05586492186835462) ),
@@ -442,8 +441,14 @@ class a_testcase(unittest.TestCase):
     for f,r in files:
       p=findPeaks("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
       # print p[:4]
-      me.assertEqual( p[:4], r ) 
-
+      if p[:4] != r:
+        print "Diff for %s: " % f,
+        for i in range(4):
+          print "%.4f" % abs(p[i]-r[i]),
+        print
+      else:
+        print "Exact results."
 
 if __name__ == '__main__':
-    main()
+    # main()
+    test()
