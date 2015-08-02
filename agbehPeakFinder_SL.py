@@ -7,6 +7,7 @@ import numpy as np
 import sys
 from pilatus_np import JJTiff
 from polarize import polarize
+from pdb import set_trace as t
 
 
 def findPeaks(
@@ -119,13 +120,13 @@ def findPeaks(
   hist1st,_ = np.histogram( allpeaks1st , bins=radiusSize*10, range=(0,radiusSize) )
   # TODO can be removed when not ROOT
   hist1st = hist1st.astype( np.float )
-  # show_vector( hist1st )
+  show_vector( hist1st )
 
 
   hist1st = smoothMarkov( hist1st, smoothingWindow )
-  # show_vector( hist1st )
+  show_vector( hist1st )
   hist1st = smoothMarkov( hist1st, smoothingWindow )
-  # show_vector( hist1st )
+  show_vector( hist1st )
 
   peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
   # print peaks1st
@@ -136,6 +137,7 @@ def findPeaks(
   peaks1st = [x[0] for x in peaks1st]
   peaks1st = np.unique(peaks1st)[0:maxNPeaks]
   # print peaks1st
+
 
 # 2nd STAGE
 
@@ -343,14 +345,26 @@ def imageToPolar( image, center, polarSize ):
   return (polarImage, radiusSize )
 
 # TODO !!!! Now is slower than before
-
 # do it inplace
-
-def smoothMarkov( row, window ):
+def smoothMarkov0( row, window ):
   copy = np.copy( row )
   S=TSpectrum()
   S.SmoothMarkov( copy, copy.shape[0], window )
   return copy
+
+from smooth import savitzky_golay
+def smoothMarkov( row, window ):
+  # print len(row)
+  out = np.abs(savitzky_golay( row, 29, 5) )
+  # print len(out)
+  return out
+
+
+def smoothMarkov2( row, window ):
+  return smooth_np( row, window+1, window='hanning')
+
+def smoothMarkov3( row, window ):
+  return cv2.GaussianBlur( row,(3),0)
 
 def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   S=TSpectrum()
@@ -428,11 +442,70 @@ def show_vector( v ):
 import unittest
 
 
+
+def smooth_np(x,window_len=11,window='hanning'):
+    """smooth the data using a window with requested size.
+    
+    This method is based on the convolution of a scaled window with the signal.
+    The signal is prepared by introducing reflected copies of the signal 
+    (with the window size) in both ends so that transient parts are minimized
+    in the begining and end part of the output signal.
+    
+    input:
+        x: the input signal 
+        window_len: the dimension of the smoothing window; should be an odd integer
+        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+            flat window will produce a moving average smoothing.
+
+    output:
+        the smoothed signal
+        
+    example:
+
+    t=linspace(-2,2,0.1)
+    x=sin(t)+randn(len(t))*0.1
+    y=smooth(x)
+    
+    see also: 
+    
+    numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
+    scipy.signal.lfilter
+ 
+    TODO: the window parameter could be the window itself if an array instead of a string
+    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
+    """
+
+    if x.ndim != 1:
+        raise ValueError, "smooth only accepts 1 dimension arrays."
+
+    if x.size < window_len:
+        raise ValueError, "Input vector needs to be bigger than window size."
+
+
+    if window_len<3:
+        return x
+
+
+    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        raise ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'"
+
+
+    s=np.r_[x[window_len-1:0:-1],x,x[-1:-window_len:-1]]
+    #print(len(s))
+    if window == 'flat': #moving average
+        w=np.ones(window_len,'d')
+    else:
+        w=eval('np.'+window+'(window_len)')
+
+    y=np.convolve(w/w.sum(),s,mode='valid')
+    return y
+
+
 def test():
 
     files = [ 
-      (142, (53.84568342941077, 0.8622330357987071, 0.05311658514998754, 0.05586492186835462) ),
       (143, (61.508508907329706, 0.9031407554284832, 0.06134643997660053, 0.03940823942452154) ),
+      (142, (53.84568342941077, 0.8622330357987071, 0.05311658514998754, 0.05586492186835462) ),
       (137, (37.12425793776592, 4.454433844722973, 0.8194620422574127, 1.3707865416975364) ),
       (158, (174.63267829976627, 0.20404616811924745, 0.024227341549215325, 0.023505703755918456) ),
       (166, (235.59694110948064, 0.20495192682856153, 0.02373238792327561, 0.021109767427827095) ),
@@ -444,7 +517,7 @@ def test():
       if p[:4] != r:
         print "Diff for %s: " % f,
         for i in range(4):
-          print "%.4f" % abs(p[i]-r[i]),
+          print "%.4f" % abs((p[i]-r[i])/r[i]),
         print
       else:
         print "Exact results."
