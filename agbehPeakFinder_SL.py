@@ -8,7 +8,18 @@ import sys
 from pilatus_np import JJTiff
 from polarize import polarize
 from pdb import set_trace as t
+from scipy.optimize import leastsq
 
+class a_histogram(object):
+  def __init__( me, data, lower, upper, resolution ):
+    me.lower = lower
+    me.upper = upper
+    me.resolution = resolution
+    me.bins = []
+    me.edges = []
+
+    me.bins,me.edges = \
+      np.histogram( data , bins=me.resolution, range=(me.lower,me.upper) )
 
 def findPeaks(
               imageOrFilename,
@@ -117,23 +128,27 @@ def findPeaks(
     allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
   # print allpeaks1st
-  hist1st,_ = np.histogram( allpeaks1st , bins=radiusSize*10, range=(0,radiusSize) )
+  hist1st,hist1stEdges = np.histogram( allpeaks1st , bins=radiusSize*10, range=(0,radiusSize) )
   # TODO can be removed when not ROOT
   hist1st = hist1st.astype( np.float )
-  show_vector( hist1st )
+  # show_vector( hist1st )
 
 
   hist1st = smoothMarkov( hist1st, smoothingWindow )
-  show_vector( hist1st )
+  # show_vector( hist1st )
   hist1st = smoothMarkov( hist1st, smoothingWindow )
-  show_vector( hist1st )
+  # show_vector( hist1st )
 
   peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
-  # print peaks1st
+  peaks1st.sort()
+  print "peaks1st", peaks1st
   
-  # TODO better syntax
+  peaks1stTEST = fitGaus( hist1st, hist1stEdges, peaks1st, 30, 0, radiusSize, radiusSize*10 )
+  for i in peaks1stTEST:
+    print "> %f" % tuple(i)
   peaks1st = peakGaus( hist1st, peaks1st, 30, radiusSize*10,0,radiusSize )
-  # print peaks1st
+  for i in peaks1st:
+    print i
   peaks1st = [x[0] for x in peaks1st]
   peaks1st = np.unique(peaks1st)[0:maxNPeaks]
   # print peaks1st
@@ -191,6 +206,7 @@ def findPeaks(
   dMeanON, dSigON, dMeanErON, dSigErON = \
       peak1Gaus( targethist, maxbinCenter, width, nbins,0,radiusSize )
   # print dMeanON, dSigON, dMeanErON, dSigErON 
+  # print dMeanON, maxbinCenter
 
   return (dMeanON, dSigON, dMeanErON, dSigErON,polarImage, image)
         
@@ -346,14 +362,14 @@ def imageToPolar( image, center, polarSize ):
 
 # TODO !!!! Now is slower than before
 # do it inplace
-def smoothMarkov0( row, window ):
+def smoothMarkov( row, window ):
   copy = np.copy( row )
   S=TSpectrum()
   S.SmoothMarkov( copy, copy.shape[0], window )
   return copy
 
 from smooth import savitzky_golay
-def smoothMarkov( row, window ):
+def smoothMarkov1( row, window ):
   # print len(row)
   out = np.abs(savitzky_golay( row, 29, 5) )
   # print len(out)
@@ -376,6 +392,54 @@ def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   posROOT = S.GetPositionX()
   pos = rwBuf2Array( posROOT, npeaks)
   return pos
+
+# has to be sorted??? TODO
+def fitGaus( hist, histedges, peaks, width, histmin, histmax, histres):
+  # fitfunc  = lambda p, x: p[0]*exp(-0.5*((x-p[1])/p[2])**2)+p[3]
+  fitfunc = lambda p, x: p[0]*exp(-0.5*((x-p[1])/p[2])**2)/(sqrt(2*np.pi)*p[2])
+  errfunc  = lambda p, x, y: (y - fitfunc(p, x))
+
+  result = []
+  for p in peaks:
+    left = p - width/2
+    if left < histmin:
+      pass # TODO
+    left *=  histres/(histmax-histmin)
+    left = int(left)
+    right = p + width/2
+    if right > histmax:
+      pass # TODO
+    right *=  histres/(histmax-histmin)
+    right = int(right)
+    # print "left=%s at %s, right=%s at %s" %(left, histedges[left],right, histedges[right])
+
+    xdata = histedges[left:right] - p
+    # show_vector( xdata )
+    ydata = hist[left:right]
+    # show_vector( ydata )
+
+    # init  = [1.0, 0.0, 0.5, 0.5]
+    init  = [1.0, 0.0, 1.0]
+
+    out   = leastsq( errfunc, init, args=(xdata, ydata))
+    c = out[0]
+    print c
+    result.append( (p+c[1],) )
+
+  return result
+
+  # print "A exp[-0.5((x-mu)/sigma)^2] + k "
+  # print "Parent Coefficients:"
+  # print "1.000, 0.200, 0.300, 0.625"
+  # print "Fit Coefficients:"
+  # print c[0],c[1],abs(c[2]),c[3]
+
+  # plot(xdata, ydata)
+  # plot(xdata, fitfunc(c, xdata))
+
+  # title(r'$A = %.3f\  \mu = %.3f\  \sigma = %.3f\ k = %.3f $' %(c[0],c[1],abs(c[2]),c[3]));
+
+  # show()
 
 def peak1Gaus( row,peak,width,hbins, hmin, hmax, write=True):
   # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
@@ -515,9 +579,11 @@ def test():
       p=findPeaks("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
       # print p[:4]
       if p[:4] != r:
+        print
         print "Diff for %s: " % f,
         for i in range(4):
           print "%.4f" % abs((p[i]-r[i])/r[i]),
+        print
         print
       else:
         print "Exact results."
