@@ -144,11 +144,10 @@ def findPeaks(
   print "peaks1st", peaks1st
   
   peaks1stTEST = fitGaus( hist1st, hist1stEdges, peaks1st, 30, 0, radiusSize, radiusSize*10 )
-  for i in peaks1stTEST:
-    print "> %f" % tuple(i)
   peaks1st = peakGaus( hist1st, peaks1st, 30, radiusSize*10,0,radiusSize )
-  for i in peaks1st:
-    print i
+  for o,n in zip(peaks1st, peaks1stTEST):
+    print o, "--new->", n
+    print o[0]-n[0], o[1]-n[1]
   peaks1st = [x[0] for x in peaks1st]
   peaks1st = np.unique(peaks1st)[0:maxNPeaks]
   # print peaks1st
@@ -396,26 +395,36 @@ def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
 # has to be sorted??? TODO
 def fitGaus( hist, histedges, peaks, width, histmin, histmax, histres):
   # fitfunc  = lambda p, x: p[0]*exp(-0.5*((x-p[1])/p[2])**2)+p[3]
-  fitfunc = lambda p, x: p[0]*exp(-0.5*((x-p[1])/p[2])**2)/(sqrt(2*np.pi)*p[2])
+
+  fitfunc = lambda p, x: p[0]*exp(-0.5*((x-p[1])/p[2])**2)
   errfunc  = lambda p, x, y: (y - fitfunc(p, x))
 
   result = []
   for p in peaks:
-    left = p - width/2
+    left = p - float(width)/2
     if left < histmin:
+      print "!!! Below boundaries"
       pass # TODO
+    left -= histmin
     left *=  histres/(histmax-histmin)
     left = int(left)
-    right = p + width/2
+    right = p + float(width)/2
     if right > histmax:
+      print "!!! Above boundaries"
       pass # TODO
+    right -= histmin
     right *=  histres/(histmax-histmin)
     right = int(right)
     # print "left=%s at %s, right=%s at %s" %(left, histedges[left],right, histedges[right])
 
     xdata = histedges[left:right] - p
+    # TODO better and in the class
+    # centers of bins
+    xdata = np.array( [ ((histedges[i]+histedges[i+1])/2.0) for i in xrange(left,right+1) ] )
+    xdata = xdata - p
+
     # show_vector( xdata )
-    ydata = hist[left:right]
+    ydata = hist[left:right+1]
     # show_vector( ydata )
 
     # init  = [1.0, 0.0, 0.5, 0.5]
@@ -423,23 +432,17 @@ def fitGaus( hist, histedges, peaks, width, histmin, histmax, histres):
 
     out   = leastsq( errfunc, init, args=(xdata, ydata))
     c = out[0]
-    print c
-    result.append( (p+c[1],) )
+    # print c
+    result.append( c[1:] )
+
+    # import pylab
+    # pylab.plot(xdata, ydata)
+    # pylab.plot(xdata, fitfunc(c, xdata))
+    # pylab.title(r'$A = %.6f\  \mu = %.6f\  \sigma = %.6f$' %(c[0],c[1],c[2]));
+    # pylab.show()
 
   return result
 
-  # print "A exp[-0.5((x-mu)/sigma)^2] + k "
-  # print "Parent Coefficients:"
-  # print "1.000, 0.200, 0.300, 0.625"
-  # print "Fit Coefficients:"
-  # print c[0],c[1],abs(c[2]),c[3]
-
-  # plot(xdata, ydata)
-  # plot(xdata, fitfunc(c, xdata))
-
-  # title(r'$A = %.3f\  \mu = %.3f\  \sigma = %.3f\ k = %.3f $' %(c[0],c[1],abs(c[2]),c[3]));
-
-  # show()
 
 def peak1Gaus( row,peak,width,hbins, hmin, hmax, write=True):
   # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
