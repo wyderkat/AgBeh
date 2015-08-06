@@ -403,7 +403,7 @@ def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres, draw=False):
 
   fitfunc = lambda p, x: p[0]*exp(-0.5*((x-p[1])/p[2])**2)
   errfunc  = lambda p, x, y: (y - fitfunc(p, x))
-  init  = [1.0, 0.0, 1.0]
+  init  = [1.0, peak, 1.0]
 
   left = peak - float(width)/2
   if left < histmin:
@@ -423,7 +423,7 @@ def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres, draw=False):
   # TODO better and in the class
   # centers of bins
   xdata1 = np.array( [ ((xdata[i]+xdata[i+1])/2.0) for i in xrange(left,right+1) ] )
-  xdata1 = xdata1 - peak
+  # xdata1 = xdata1 - peak
 
   # show_vector( xdata1 )
   ydata1 = ydata[left:right+1]
