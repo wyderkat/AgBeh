@@ -143,14 +143,12 @@ def findPeaks(
   peaks1st.sort()
   # print "peaks1st", peaks1st
   
-  peaks= []
-  for p in peaks1st:
-    p,sigma = fitGaus( hist1stEdges, hist1st, p, 30, 0, radiusSize, radiusSize*10 )
-    peaks.append( p )
+  peaks1st = [ fitGaus( hist1stEdges, hist1st, p, 30, 0, radiusSize, radiusSize*10 )[0] \
+               for p in peaks1st ]
   # peaks1st = peakGaus( hist1st, peaks1st, 30, radiusSize*10,0,radiusSize )
   # for o,n in zip(peaks1st, peaks1stTEST):
     # print o[0], "--new->", n
-  peaks1st = np.unique(peaks)[0:maxNPeaks]
+  peaks1st = np.unique(peaks1st)[0:maxNPeaks]
   # print peaks1st
 
 
@@ -159,11 +157,9 @@ def findPeaks(
   allpeaks2nd = []
   diffs2nd = []
   for row in polarImage:
-    peaks = []
-    for p in peaks1st:
-      xdata = np.arange( len(row)+1, dtype=np.float )
-      p, sigma = fitGaus( xdata, row, p, 30, 0, radiusSize, radiusSize )
-      peaks.append( p )
+    xdata = np.arange( len(row)+1, dtype=np.float )
+    peaks = [ fitGaus( xdata, row, p, 30, 0, radiusSize, radiusSize )[0] \
+              for p in peaks1st ]
     # peaks = peakGaus( row, peaks1st, 30, radiusSize,0,radiusSize )
     # peaks = [ x[0] for x in peaks if x[0]>=firstPeak and x[0]<=lastPeak ]
     peaks = [ x for x in peaks if x>=firstPeak and x<=lastPeak ]
@@ -211,7 +207,7 @@ def findPeaks(
   maxbinCenter = (targethistEdges[maxbinIndex] + targethistEdges[maxbinIndex+1])/2.0
   # dMeanON, dSigON, dMeanErON, dSigErON = \
       # peak1Gaus( targethist, maxbinCenter, width, nbins,0,radiusSize )
-  peak, sigma = fitGaus( targethistEdges, targethist, maxbinCenter, 30, 0, radiusSize, radiusSize )
+  peak, sigma = fitGaus( targethistEdges, targethist, maxbinCenter, 30, 0, radiusSize, radiusSize, draw=False )
   # print dMeanON, dSigON, dMeanErON, dSigErON 
   # print dMeanON, maxbinCenter
 
@@ -403,7 +399,7 @@ def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   return pos
 
 # has to be sorted??? TODO
-def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres):
+def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres, draw=False):
 
   fitfunc = lambda p, x: p[0]*exp(-0.5*((x-p[1])/p[2])**2)
   errfunc  = lambda p, x, y: (y - fitfunc(p, x))
@@ -424,7 +420,6 @@ def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres):
   right *=  histres/(histmax-histmin)
   right = int(right)
 
-  xdata1 = xdata[left:right] - peak
   # TODO better and in the class
   # centers of bins
   xdata1 = np.array( [ ((xdata[i]+xdata[i+1])/2.0) for i in xrange(left,right+1) ] )
@@ -440,13 +435,15 @@ def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres):
   # print c
   peak += c[1]
   sigma = c[2]
-  return (peak,sigma)
 
-  # import pylab
-  # pylab.plot(xdata1, ydata1)
-  # pylab.plot(xdata1, fitfunc(c, xdata1))
-  # pylab.title(r'$A = %.6f\  \mu = %.6f\  \sigma = %.6f$' %(c[0],c[1],c[2]));
-  # pylab.show()
+  if draw:
+    import pylab
+    pylab.plot(xdata1, ydata1)
+    pylab.plot(xdata1, fitfunc(c, xdata1))
+    pylab.title(r'$A = %.6f\  \mu = %.6f\  \sigma = %.6f$' %(c[0],c[1],c[2]));
+    pylab.show()
+
+  return (peak,sigma)
 
 
 
