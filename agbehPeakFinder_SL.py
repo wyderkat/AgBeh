@@ -121,7 +121,7 @@ def findPeaks(
   # show_array( polarImage )
 
   polarImage = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
-  # show_array( polarimage )
+  # show_array( polarImage )
 
   allpeaks1st = []
   for row in polarImage:
@@ -143,7 +143,7 @@ def findPeaks(
   peaks1st.sort()
   # print "peaks1st", peaks1st
   
-  peaks1st = [ fitGaus( hist1stEdges, hist1st, p, 30, 0, radiusSize, radiusSize*10 )[0] \
+  peaks1st = [ fitGaus( hist1stEdges, hist1st, p, 30, 0, radiusSize, radiusSize*10, draw=False )[0] \
                for p in peaks1st ]
   # peaks1st = peakGaus( hist1st, peaks1st, 30, radiusSize*10,0,radiusSize )
   # for o,n in zip(peaks1st, peaks1stTEST):
@@ -399,11 +399,12 @@ def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   return pos
 
 # has to be sorted??? TODO
-def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres, draw=False):
+def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres,maxfev=0, draw=False):
 
   fitfunc = lambda p, x: p[0]*exp(-0.5*((x-p[1])/p[2])**2)
   errfunc  = lambda p, x, y: (y - fitfunc(p, x))
-  init  = [1.0, peak, 1.0]
+
+  init  = [ 1.0, peak, 1.0]
 
   left = peak - float(width)/2
   if left < histmin:
@@ -430,11 +431,11 @@ def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres, draw=False):
   # show_vector( ydata1 )
 
 
-  out   = leastsq( errfunc, init, args=(xdata1, ydata1))
+  out   = leastsq( errfunc, init, args=(xdata1, ydata1), maxfev=maxfev)
   c = out[0]
   # print c
-  peak += c[1]
-  sigma = c[2]
+  xdelta = c[1]
+  sigma  = c[2]
 
   if draw:
     import pylab
@@ -443,7 +444,7 @@ def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres, draw=False):
     pylab.title(r'$A = %.6f\  \mu = %.6f\  \sigma = %.6f$' %(c[0],c[1],c[2]));
     pylab.show()
 
-  return (peak,sigma)
+  return (xdelta,sigma)
 
 
 
