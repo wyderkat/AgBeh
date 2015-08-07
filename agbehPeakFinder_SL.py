@@ -10,6 +10,8 @@ from polarize import polarize
 from pdb import set_trace as t
 from scipy.optimize import leastsq
 
+import markov
+
 class a_histogram(object):
   def __init__( me, data, lower, upper, resolution ):
     me.lower = lower
@@ -118,14 +120,16 @@ def findPeaks(
 
   # run a gaus filter over the polar image to blend in the rough spots
   polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
-  # show_array( polarImage )
+  show_array( polarImage )
 
-  polarImage = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
+  # polarImage = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
   # show_array( polarImage )
 
   allpeaks1st = []
   for row in polarImage:
+    markov.smooth( row, smoothingWindow )
     allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
+  show_array( polarImage )
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
   # print allpeaks1st
   hist1st,hist1stEdges = np.histogram( allpeaks1st , bins=radiusSize*10, range=(0,radiusSize) )
@@ -134,9 +138,11 @@ def findPeaks(
   # show_vector( hist1st )
 
 
-  hist1st = smoothMarkov( hist1st, smoothingWindow )
+  # hist1st = smoothMarkov( hist1st, smoothingWindow )
+  markov.smooth( hist1st, smoothingWindow )
   # show_vector( hist1st )
-  hist1st = smoothMarkov( hist1st, smoothingWindow )
+  # hist1st = smoothMarkov( hist1st, smoothingWindow )
+  markov.smooth( hist1st, smoothingWindow )
   # show_vector( hist1st )
 
   peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
@@ -173,20 +179,26 @@ def findPeaks(
 
   hist2nd, hist2ndEdges = \
       np.histogram( allpeaks2nd , bins=radiusSize*10, range=(0,radiusSize) )
-  # hist2nd = hist2nd.astype( np.float )
+  hist2nd = hist2nd.astype( np.float )
   # show_vector( hist2nd )
 
   diffs2nd = diffs2nd[ diffs2nd>=minDiff ]
   diffhist2nd, diffhist2ndEdges = \
       np.histogram( diffs2nd , bins=radiusSize, range=(0,radiusSize) )
-  # diffhist2nd = diffhist2nd.astype( np.float )
+  diffhist2nd = diffhist2nd.astype( np.float )
   # show_vector( diffhist2nd )
 
 
   # TODO Is this logic fine ?
   # TODO should be taken normal aPeaks
 
-  hist2nd = smoothMarkov( hist2nd, smoothingWindow )
+  # show_vector( hist1st )
+  # hist2nd = smoothMarkov( hist2nd, smoothingWindow )
+  # print tmphist2nd
+  markov.smooth( hist2nd, smoothingWindow )
+  # print ">>>"
+  # print hist2nd
+  # show_vector( hist1st )
   peaks2nd = peakMarkov( hist2nd, 0.33, 0.025, radiusSize*10,0,radiusSize )
   peaks2nd.sort()
   # print peaks2nd
@@ -196,8 +208,10 @@ def findPeaks(
     width=10
     nbins=radiusSize
   else:
-    hist2nd = smoothMarkov( hist2nd, smoothingWindow )
-    hist2nd = smoothMarkov( hist2nd, smoothingWindow )
+    # hist2nd = smoothMarkov( hist2nd, smoothingWindow )
+    # hist2nd = smoothMarkov( hist2nd, smoothingWindow )
+    markov.smooth( hist2nd, smoothingWindow )
+    markov.smooth( hist2nd, smoothingWindow )
     targethist = hist2nd
     targethistEdges = hist2ndEdges
     width=5
@@ -372,6 +386,8 @@ def smoothMarkov( row, window ):
   S=TSpectrum()
   S.SmoothMarkov( copy, copy.shape[0], window )
   return copy
+
+
 
 from smooth import savitzky_golay
 def smoothMarkov1( row, window ):
