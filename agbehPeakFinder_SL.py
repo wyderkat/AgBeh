@@ -120,7 +120,7 @@ def findPeaks(
 
   # run a gaus filter over the polar image to blend in the rough spots
   polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
-  show_array( polarImage )
+  # show_array( polarImage )
 
   # polarImage = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
   # show_array( polarImage )
@@ -129,7 +129,7 @@ def findPeaks(
   for row in polarImage:
     markov.smooth( row, smoothingWindow )
     allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
-  show_array( polarImage )
+  # show_array( polarImage )
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
   # print allpeaks1st
   hist1st,hist1stEdges = np.histogram( allpeaks1st , bins=radiusSize*10, range=(0,radiusSize) )
@@ -139,6 +139,7 @@ def findPeaks(
 
 
   # hist1st = smoothMarkov( hist1st, smoothingWindow )
+  # becarfull, dtype has to be dynamic (float, but no float32 or no float64)
   markov.smooth( hist1st, smoothingWindow )
   # show_vector( hist1st )
   # hist1st = smoothMarkov( hist1st, smoothingWindow )
