@@ -126,7 +126,9 @@ def findPeaks(
   allpeaks1st = []
   for row in polarImage:
     markov.smooth( row, smoothingWindow )
-    allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
+    # allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
+    allpeaks1st.extend( markov.search( row, 1.0, peakThresh ) )
+  print allpeaks1st
   # show_array( polarImage )
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
   # print allpeaks1st

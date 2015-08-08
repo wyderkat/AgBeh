@@ -117,6 +117,7 @@ static int search_ROOT(
   int averWindow, 
   double* resultPeaks)
 {
+  // ROOT's code. Don't touch that ... puzzle!
    int i, j, numberIterations = (int)(7 * sigma + 0.5);
    double a, b, c;
    int k, lindex, posit, imin, imax, jmin, jmax, lh_gold, priz;
@@ -534,7 +535,6 @@ static int search_ROOT(
       }
    }
 
-   //for(i = 0; i < ssize; i++) destVector[i] = working_space[i + shift];
    free(working_space);
    return peak_index;
 }
@@ -546,8 +546,10 @@ static PyObject *search(PyObject *self, PyObject *args) {
   int ssize;
   double sigma;
   double threshold;
-  double *resultPeaks;
-  int resultN;
+  double *peaks;
+  int peakscount;
+  int i;
+  PyObject *resultpeaks,*item;
 
   if (!PyArg_ParseTuple(args, "O!dd",
                         &PyArray_Type, &py_source, &sigma, &threshold)) {
@@ -557,21 +559,25 @@ static PyObject *search(PyObject *self, PyObject *args) {
   source = (double*)PyArray_DATA(py_source);
   ssize = (int)PyArray_DIM(py_source,0);
 
-  printf("search: ssize=%d, sigma=%f, threshold=%f\n", ssize, sigma, threshold);
-
+  // From TSpectrum.Search
   if (sigma < 1) {
     sigma = ssize/MAX_PEAKS;
     if (sigma < 1) sigma = 1;
     if (sigma > 8) sigma = 8;
   }
-  resultPeaks = calloc(MAX_PEAKS, sizeof(double));
-  resultN = search_ROOT( source, ssize, sigma, threshold*100, true, 3, true, 3, resultPeaks);
-  printf("resultN=%d\n", resultN);
-  printf("%f %f %f %f ...\n", 
-      resultPeaks[0],resultPeaks[1],resultPeaks[2],resultPeaks[3],resultPeaks[4]);
-  free(resultPeaks);
-  // From ROOT.TSpectrum
-  //
-  Py_RETURN_NONE;
+
+  peaks = calloc(MAX_PEAKS, sizeof(double));
+  
+  peakscount = search_ROOT( source, ssize, sigma, threshold*100, true, 3, true, 3, peaks);
+  
+  resultpeaks = PyList_New(peakscount);
+  for(i=0; i<peakscount; ++i) {
+    peaks[i] =  (int)(peaks[i] + 0.5) + 0.5;
+    item = PyFloat_FromDouble( peaks[i] );
+    PyList_SetItem( resultpeaks, i, item );
+  }
+
+  free(peaks);
+  return resultpeaks;
 }
 
