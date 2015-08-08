@@ -122,8 +122,6 @@ def findPeaks(
   polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
   # show_array( polarImage )
 
-  # polarImage = np.apply_along_axis( smoothMarkov, 1, polarImage, smoothingWindow )
-  # show_array( polarImage )
 
   allpeaks1st = []
   for row in polarImage:
@@ -133,16 +131,13 @@ def findPeaks(
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
   # print allpeaks1st
   hist1st,hist1stEdges = np.histogram( allpeaks1st , bins=radiusSize*10, range=(0,radiusSize) )
-  # TODO can be removed when not ROOT
   hist1st = hist1st.astype( np.float )
   # show_vector( hist1st )
 
 
-  # hist1st = smoothMarkov( hist1st, smoothingWindow )
   # becarfull, dtype has to be dynamic (float, but no float32 or no float64)
   markov.smooth( hist1st, smoothingWindow )
   # show_vector( hist1st )
-  # hist1st = smoothMarkov( hist1st, smoothingWindow )
   markov.smooth( hist1st, smoothingWindow )
   # show_vector( hist1st )
 
@@ -194,11 +189,7 @@ def findPeaks(
   # TODO should be taken normal aPeaks
 
   # show_vector( hist1st )
-  # hist2nd = smoothMarkov( hist2nd, smoothingWindow )
-  # print tmphist2nd
   markov.smooth( hist2nd, smoothingWindow )
-  # print ">>>"
-  # print hist2nd
   # show_vector( hist1st )
   peaks2nd = peakMarkov( hist2nd, 0.33, 0.025, radiusSize*10,0,radiusSize )
   peaks2nd.sort()
@@ -209,8 +200,6 @@ def findPeaks(
     width=10
     nbins=radiusSize
   else:
-    # hist2nd = smoothMarkov( hist2nd, smoothingWindow )
-    # hist2nd = smoothMarkov( hist2nd, smoothingWindow )
     markov.smooth( hist2nd, smoothingWindow )
     markov.smooth( hist2nd, smoothingWindow )
     targethist = hist2nd
@@ -380,29 +369,6 @@ def imageToPolar( image, center, polarSize ):
 
   return (polarImage, radiusSize )
 
-# TODO !!!! Now is slower than before
-# do it inplace
-def smoothMarkov( row, window ):
-  copy = np.copy( row )
-  S=TSpectrum()
-  S.SmoothMarkov( copy, copy.shape[0], window )
-  return copy
-
-
-
-from smooth import savitzky_golay
-def smoothMarkov1( row, window ):
-  # print len(row)
-  out = np.abs(savitzky_golay( row, 29, 5) )
-  # print len(out)
-  return out
-
-
-def smoothMarkov2( row, window ):
-  return smooth_np( row, window+1, window='hanning')
-
-def smoothMarkov3( row, window ):
-  return cv2.GaussianBlur( row,(3),0)
 
 def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   S=TSpectrum()

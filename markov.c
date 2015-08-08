@@ -174,7 +174,8 @@ static int search_ROOT(
 
    i = (int)(7 * sigma + 0.5);
    i = 2 * i;
-   double *working_space = calloc( ssize, sizeof(double) );
+   double *working_space = calloc( 7*(ssize+i), sizeof(double) );
+
    for(i = 0; i < size_ext; i++){
       if(i < shift){
          a = i - shift;
@@ -534,7 +535,7 @@ static int search_ROOT(
    }
 
    //for(i = 0; i < ssize; i++) destVector[i] = working_space[i + shift];
-   //free(working_space);
+   free(working_space);
    return peak_index;
 }
 
@@ -566,6 +567,8 @@ static PyObject *search(PyObject *self, PyObject *args) {
   resultPeaks = calloc(MAX_PEAKS, sizeof(double));
   resultN = search_ROOT( source, ssize, sigma, threshold*100, true, 3, true, 3, resultPeaks);
   printf("resultN=%d\n", resultN);
+  printf("%f %f %f %f ...\n", 
+      resultPeaks[0],resultPeaks[1],resultPeaks[2],resultPeaks[3],resultPeaks[4]);
   free(resultPeaks);
   // From ROOT.TSpectrum
   //
