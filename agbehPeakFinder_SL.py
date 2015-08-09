@@ -126,9 +126,9 @@ def findPeaks(
   allpeaks1st = []
   for row in polarImage:
     markov.smooth( row, smoothingWindow )
-    # allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
-    allpeaks1st.extend( markov.search( row, 1.0, peakThresh ) )
-  print allpeaks1st
+    allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
+    # allpeaks1st.extend( markov.search( row, 1.0, peakThresh ) )
+  # print allpeaks1st
   # show_array( polarImage )
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
   # print allpeaks1st
@@ -144,6 +144,9 @@ def findPeaks(
   # show_vector( hist1st )
 
   peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  # peaks1st = peakMarkovVerbose( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  # peaks1st = peakMarkovPorted( hist1st, 0.33, 0.025, hist1stEdges )
+  # print "peaks1st", peaks1st
   peaks1st.sort()
   # print "peaks1st", peaks1st
   
@@ -254,123 +257,77 @@ def imageToPolar( image, center, polarSize ):
 
   rowCenter=float(center[0])
   colCenter=float(center[1])
-
-# 1) polar system
-
-  # unroll into polar coordinates
   X,Y = indices( image.shape )
-  # print X
-  # 0 0 0 0 ...
-  # 1 1 1 1 ...
-  # ....
-  # 618 618 618
-
   Xc=X-rowCenter
   Yc=Y-colCenter
   r = np.around( np.sqrt(Xc**2+Yc**2) )
-  # print r
-  #[403.  403.  402. ...,  451.  451.  452.]
-  #[ 402.  402.  401. ...,  450.  451.  451.]
-  #[ 401.  401.  400. ...,  449.  450.  450.]
-  #..., 
-  #[ 333.  332.  332. ...,  389.  390.  391.]
-  #[ 334.  333.  332. ...,  390.  391.  391.]
-  #[ 334.  334.  333. ...,  390.  391.  392.]]
-  
-
   at3 = np.arctan2(Yc,Xc)
-  # print at3
-  #[-2.62244654 -2.62460304 -2.62676483 ...,  2.45992182  2.45820141
-  #  2.45648581]
-  #[-2.62121311 -2.62337275 -2.62553772 ...,  2.45852146  2.45680006
-  #  2.45508348]
-  #[-2.61997436 -2.62213713 -2.62430527 ...,  2.45711627  2.45539388
-  #  2.45367633]
-  #..., 
-  #[-0.64470303 -0.64229702 -0.63988231 ...,  0.81811376  0.81986726
-  #  0.82161421]
-  #[-0.64290159 -0.64049811 -0.638086   ...,  0.81624137  0.81799531
-  #  0.8197427 ]
-  #[-0.64110877 -0.63870786 -0.63629835 ...,  0.81437556  0.8161299
-  #  0.81787771]]
-  # imshow(at3)
-
   # convert angles < 0 to positive
   at3[ at3<0.0 ] += 2*np.pi
-  # print at3
-  #[[ 3.66073877  3.65858227  3.65642047 ...,  2.45992182  2.45820141
-  #   2.45648581]
-  # [ 3.66197219  3.65981256  3.65764759 ...,  2.45852146  2.45680006
-  #   2.45508348]
-  # [ 3.66321095  3.66104817  3.65888003 ...,  2.45711627  2.45539388
-  #   2.45367633]
-  # ..., 
-  # [ 5.63848228  5.64088829  5.643303   ...,  0.81811376  0.81986726
-  #   0.82161421]
-  # [ 5.64028372  5.64268719  5.64509931 ...,  0.81624137  0.81799531
-  #   0.8197427 ]
-  # [ 5.64207654  5.64447745  5.64688695 ...,  0.81437556  0.8161299
-  #   0.81787771]]
-  
   # imshow(at3)
-
-  # TODO is this float?
   at3 *= polarSize/(2*pi)
-  # print at3
-  #[[ 52.43622032  52.40533078  52.3743653  ...,  35.23578449  35.21114147
-  #   35.1865673 ]
-  # [ 52.45388784  52.42295332  52.39194243 ...,  35.21572592  35.19106859
-  #   35.16648039]
-  # [ 52.47163174  52.44065224  52.40959592 ...,  35.19559808  35.17092658
-  #   35.14632449]
-  # ..., 
-  # [ 80.76530932  80.79977296  80.83436111 ...,  11.71861639  11.7437335
-  #   11.76875659]
-  # [ 80.79111308  80.82554031  80.86009132 ...,  11.69179645  11.71691971
-  #   11.74194925]
-  # [ 80.81679333  80.85118388  80.88569748 ...,  11.66507059  11.69019964
-  #   11.71523527]]
-
   r = r.astype(int)
-  # print r
-  #[[403 403 402 ..., 451 451 452]
-  # [402 402 401 ..., 450 451 451]
-  # [401 401 400 ..., 449 450 450]
-  # ..., 
-  # [333 332 332 ..., 389 390 391]
-  # [334 333 332 ..., 390 391 391]
-  # [334 334 333 ..., 390 391 392]]
-
   at3 = at3.astype(int)
-  # print at3
-  #[[52 52 52 ..., 35 35 35]
-  #[52 52 52 ..., 35 35 35]
-  #[52 52 52 ..., 35 35 35]
-  #..., 
-  #[80 80 80 ..., 11 11 11]
-  #[80 80 80 ..., 11 11 11]
-  #[80 80 80 ..., 11 11 11]]
-
-  # imp[at3,r]= image 
   radiusSize = np.amax(r)+1
-  # print radiusSize 
-  # 453
-
-  # allocate the polar image
   polarImage=zeros((amax(at3)+1,radiusSize))
-  # print amax(at3)+1
-  # 90
-
-
-  # Straight up broadcasting in numpy doesn't do += properly: you just get the last value that mapped to the new coords. So we lose info.
-  # polarImage[at3,r]+= image
-
-  # This one I wrote in Fortran (just because it's really easy to compile fortran modules to work with numpy), it does the proper +=, and it's full speed.
-  polarImage = polarize( image,at3,r,polarImage)
+  it = np.nditer(image, flags=['multi_index'])
+  # polarize
+  while not it.finished:
+    polarImage[ at3[it.multi_index],r[it.multi_index] ] += it[0]
+    it.iternext()
   # show_array( polarImage )
 
   return (polarImage, radiusSize )
 
+def peakMarkovPorted( row, sigma, threshold, histedges = None ):
+  # print "markov.search( ssize = %s" % len(row)
+  peaks = markov.search( row, sigma, threshold )
+  #peaks[i] =  (int)(peaks[i] + 0.5) + 0.5;
+  result = []
+
+  if histedges is not None:
+    first = histedges[0]
+    i = 0
+    for p in peaks:
+      j = first + int(p + 0.5);
+      center = (histedges[j] + histedges[j+1])/2.0
+      result.append( center )
+      i+=1
+
+  return result
+
+  #    for (i = 0; i < npeaks; i++) {
+  #       bin = first + Int_t(fPositionX[i] + 0.5);
+  #       fPositionX[i] = hin->GetBinCenter(bin);
+  #       fPositionY[i] = hin->GetBinContent(bin);
+  #    }
+
+def peakMarkovInternal( row, sigma, threshold, histedges ):
+  S=TSpectrum()
+  # hist = TH1D('','',hbins, hmin, hmax)
+  # setBinsToAr1D(hist,row)
+  size = len(row)
+  # how many peaks
+  if (sigma < 1):
+     sigma = size/100
+     if sigma < 1: sigma = 1
+     if sigma > 8: sigma = 8
+
+  dest = np.zeros(100,dtype=np.float)
+  # npeaks = S.Search(hist,sigma,'goff', threshold)
+  npeaks = S.SearchHighRes(row, dest, size, sigma, 100*threshold,
+                             True, 3, True, 3)
+  result = []
+
+  first = histedges[0]
+  i = 0
+  for p in S.fPositionX:
+    j = first + int(p + 0.5);
+    center = (histedges[j] + histedges[j+1])/2.0
+    result.append( center )
+    i+=1
+
+  return result
 
 def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   S=TSpectrum()
@@ -378,6 +335,16 @@ def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   setBinsToAr1D(hist,row)
   # how many peaks
   npeaks = S.Search(hist,sigma,'goff', threshold)
+  # peaks positions in ROOT format...
+  posROOT = S.GetPositionX()
+  pos = rwBuf2Array( posROOT, npeaks)
+  return pos
+def peakMarkovVerbose( row, sigma, threshold, hbins, hmin, hmax):
+  S=TSpectrum()
+  hist = TH1D('','',hbins, hmin, hmax)
+  setBinsToAr1D(hist,row)
+  # how many peaks
+  npeaks = S.Search(hist,sigma,'goff', threshold, True)
   # peaks positions in ROOT format...
   posROOT = S.GetPositionX()
   pos = rwBuf2Array( posROOT, npeaks)

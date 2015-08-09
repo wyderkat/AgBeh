@@ -117,6 +117,8 @@ static int search_ROOT(
   int averWindow, 
   double* resultPeaks)
 {
+    printf("TomMarkov: ssize=%d, sigma=%f, th=%f, bg=%d, iter=%d, markov=%d, win=%d\n",
+      ssize, sigma, threshold, backgroundRemove, deconIterations, markov, averWindow);
   // ROOT's code. Don't touch that ... puzzle!
    int i, j, numberIterations = (int)(7 * sigma + 0.5);
    double a, b, c;
@@ -561,6 +563,7 @@ static PyObject *search(PyObject *self, PyObject *args) {
 
   // From TSpectrum.Search
   if (sigma < 1) {
+    //sigma = (float)ssize/MAX_PEAKS;
     sigma = ssize/MAX_PEAKS;
     if (sigma < 1) sigma = 1;
     if (sigma > 8) sigma = 8;
@@ -572,7 +575,6 @@ static PyObject *search(PyObject *self, PyObject *args) {
   
   resultpeaks = PyList_New(peakscount);
   for(i=0; i<peakscount; ++i) {
-    peaks[i] =  (int)(peaks[i] + 0.5) + 0.5;
     item = PyFloat_FromDouble( peaks[i] );
     PyList_SetItem( resultpeaks, i, item );
   }
