@@ -119,6 +119,16 @@ static int search_ROOT(
 {
     printf("TomMarkov: ssize=%d, sigma=%f, th=%f, bg=%d, iter=%d, markov=%d, win=%d\n",
       ssize, sigma, threshold, backgroundRemove, deconIterations, markov, averWindow);
+    //printf("TomMarkov: [608]=%f, [609]=%f, [610]=%f, [611]=%f \n",
+    //    source[608], source[609], source[610], source[611]); 
+  
+   int verbose = 1;
+   int iii; double sumsum=0;
+   for(iii=0; iii<ssize; iii++) {
+     sumsum += source[iii];
+   }
+   printf("TomMarkov: sumsum=%f \n", sumsum);
+
   // ROOT's code. Don't touch that ... puzzle!
    int i, j, numberIterations = (int)(7 * sigma + 0.5);
    double a, b, c;
@@ -177,7 +187,9 @@ static int search_ROOT(
 
    i = (int)(7 * sigma + 0.5);
    i = 2 * i;
-   double *working_space = calloc( 7*(ssize+i), sizeof(double) );
+   double * working_space = calloc( 7*(ssize+i), sizeof(double) );
+   //double *working_space = new double [7 * (ssize + i)];
+   for (j=0;j<7 * (ssize + i);j++) working_space[j] = 0;
 
    for(i = 0; i < size_ext; i++){
       if(i < shift){
@@ -490,6 +502,7 @@ static int search_ROOT(
       lda=threshold;
    lda=lda/100;
 
+   if (verbose) printf("lda=%f maximum_decon=%f\n", lda, maximum_decon );
 //searching for peaks in deconvolved spectrum
    for(i = 1; i < size_ext - 1; i++){
       if(working_space[i] > working_space[i - 1] && working_space[i] > working_space[i + 1]){
@@ -538,6 +551,7 @@ static int search_ROOT(
    }
 
    free(working_space);
+   printf("TomMarkov: fNPeaks=%d 3rd=%f \n", peak_index, resultPeaks[2] );
    return peak_index;
 }
 

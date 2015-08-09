@@ -22,12 +22,17 @@ class a_histogram(object):
 
     me.bins, me.edges = \
       np.histogram( data , bins=me.resolution, range=(me.lower,me.upper) )
+    me.bins = me.bins.astype( np.float )
 
     me.centers = np.zeros_like( me.bins, dtype=np.float )
     for center, left, right in np.nditer(
         [me.centers, me.edges[:-1], me.edges[1:]],
         op_flags=['readwrite']):
       center[...] = (left+right)/2.0;
+
+  def maxbin_center( me ):
+    idx = me.bins.argmax()
+    return me.centers[ idx ]
 
 
 
@@ -146,16 +151,16 @@ def findPeaks(
   # show_vector( hist1st )
 
 
-  # becarfull, dtype has to be dynamic (float, but no float32 or no float64)
+  # be careful, dtype has to be dynamic (float, but no float32 or no float64)
   markov.smooth( hist1st, smoothingWindow )
   # show_vector( hist1st )
   markov.smooth( hist1st, smoothingWindow )
   # show_vector( hist1st )
 
-  peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  #peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
   # peaks1st = peakMarkovVerbose( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
-  # peaks1st = peakMarkovPorted( hist1st, 0.33, 0.025, hist1stEdges )
-  # print "peaks1st", peaks1st
+  peaks1st = peakMarkovPorted( hist1st, 0.33, 0.025, hist1stEdges )
+  print "peaks1st", peaks1st
   peaks1st.sort()
   # print "peaks1st", peaks1st
   
