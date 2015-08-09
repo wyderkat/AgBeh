@@ -6,7 +6,6 @@ from npRootUtils import *
 import numpy as np
 import sys
 from pilatus_np import JJTiff
-from polarize import polarize
 from pdb import set_trace as t
 from scipy.optimize import leastsq
 
@@ -17,11 +16,21 @@ class a_histogram(object):
     me.lower = lower
     me.upper = upper
     me.resolution = resolution
-    me.bins = []
-    me.edges = []
+    me.bins = [] 
+    me.edges = [] # len(me.edges) == len(me.bins) + 1
+    me.centers = [] # len(me.centers) == len(me.bins)
 
-    me.bins,me.edges = \
+    me.bins, me.edges = \
       np.histogram( data , bins=me.resolution, range=(me.lower,me.upper) )
+
+    me.centers = np.zeros_like( me.bins, dtype=np.float )
+    for center, left, right in np.nditer(
+        [me.centers, me.edges[:-1], me.edges[1:]],
+        op_flags=['readwrite']):
+      center[...] = (left+right)/2.0;
+
+
+
 
 def findPeaks(
               imageOrFilename,
@@ -264,7 +273,6 @@ def imageToPolar( image, center, polarSize ):
   at3 = np.arctan2(Yc,Xc)
   # convert angles < 0 to positive
   at3[ at3<0.0 ] += 2*np.pi
-  # imshow(at3)
   at3 *= polarSize/(2*pi)
   r = r.astype(int)
   at3 = at3.astype(int)
@@ -275,7 +283,6 @@ def imageToPolar( image, center, polarSize ):
   while not it.finished:
     polarImage[ at3[it.multi_index],r[it.multi_index] ] += it[0]
     it.iternext()
-  # show_array( polarImage )
 
   return (polarImage, radiusSize )
 
@@ -550,3 +557,7 @@ def test():
 if __name__ == '__main__':
     # main()
     test()
+    #h = a_histogram( [1,1,2,3,6,6], 0,10,11 )
+    #print "bins", h.bins
+    #print "edges", h.edges
+    #print "centers", h.centers
