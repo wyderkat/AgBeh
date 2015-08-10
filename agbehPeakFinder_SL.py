@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # encoding: utf-8
+
+import sys
 import cv2
 import numpy as np
-import sys
-from pilatus_np import JJTiff
 from scipy.optimize import leastsq
+
+from pilatus_np import JJTiff
 import markov
 
 class a_histogram(object):
@@ -33,7 +35,7 @@ class a_histogram(object):
 
 
 
-def findPeaks(
+def findDistance(
               imageOrFilename,
               center,
               peakThresh=0.05,
@@ -136,7 +138,7 @@ def findPeaks(
   allpeaks1st = []
   for row in polarImage:
     markov.smooth( row, smoothingWindow )
-    allpeaks1st.extend( peakMarkovPorted( row, 1.0, peakThresh ) )
+    allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh ) )
   # print allpeaks1st
   # show_array( polarImage )
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
@@ -152,7 +154,7 @@ def findPeaks(
   markov.smooth( hist1st, smoothingWindow )
   # show_vector( hist1st )
 
-  peaks1st = peakMarkovPorted( hist1st, 0.33, 0.025, hist1stEdges )
+  peaks1st = peakMarkov( hist1st, 0.33, 0.025, hist1stEdges )
   # print "\n%s\n" % peaks1st
   peaks1st.sort()
   # print "peaks1st", peaks1st
@@ -198,7 +200,7 @@ def findPeaks(
   # show_vector( hist1st )
   markov.smooth( hist2nd, smoothingWindow )
   # show_vector( hist1st )
-  peaks2nd = peakMarkovPorted( hist2nd, 0.33, 0.025, hist2ndEdges )
+  peaks2nd = peakMarkov( hist2nd, 0.33, 0.025, hist2ndEdges )
   peaks2nd.sort()
   # print peaks2nd
   if len(peaks2nd) > 1:
@@ -234,7 +236,7 @@ def retrieveImage(filePath,clearVoids=False,makeU8=False,doLog=False):
     try:
         
         jjIm=JJTiff(filePath,bars = 0.0, nega = 0.0)
-        image=rot90(fliplr(jjIm.arr)) # these aren't indexed the way I had them before. Easier to fix than to rewrite all my code.
+        image=np.rot90(np.fliplr(jjIm.arr)) # these aren't indexed the way I had them before. Easier to fix than to rewrite all my code.
         
     except TypeError: # TIFF.open returns a TypeError when it can't read a file. NOTE: This may be cruft now that I use JJTiff
         print 'Could not open',filePath
@@ -244,10 +246,10 @@ def retrieveImage(filePath,clearVoids=False,makeU8=False,doLog=False):
         image[image<0]=0
     if doLog:
         image[image<1]=1
-        image=log(image)
+        image=np.log(image)
     if makeU8:
         image[image<0]=0 # this is needed for uint8
-        imMax=amax(image)
+        imMax=np.amax(image)
         im8=array(image/float(imMax)*255,dtype='uint8')
         return im8
     else:
@@ -257,18 +259,18 @@ def imageToPolar( image, center, polarSize ):
 
   rowCenter=float(center[0])
   colCenter=float(center[1])
-  X,Y = indices( image.shape )
+  X,Y = np.indices( image.shape )
   Xc=X-rowCenter
   Yc=Y-colCenter
   r = np.around( np.sqrt(Xc**2+Yc**2) )
   at3 = np.arctan2(Yc,Xc)
   # convert angles < 0 to positive
   at3[ at3<0.0 ] += 2*np.pi
-  at3 *= polarSize/(2*pi)
+  at3 *= polarSize/(2*np.pi)
   r = r.astype(int)
   at3 = at3.astype(int)
   radiusSize = np.amax(r)+1
-  polarImage=zeros((amax(at3)+1,radiusSize))
+  polarImage= np.zeros((np.amax(at3)+1,radiusSize))
   it = np.nditer(image, flags=['multi_index'])
   # polarize
   while not it.finished:
@@ -277,7 +279,7 @@ def imageToPolar( image, center, polarSize ):
 
   return (polarImage, radiusSize )
 
-def peakMarkovPorted( row, sigma, threshold, histedges = None ):
+def peakMarkov( row, sigma, threshold, histedges = None ):
   peaks = markov.search( row, sigma, threshold )
   result = []
 
@@ -302,7 +304,7 @@ def peakMarkovPorted( row, sigma, threshold, histedges = None ):
 # has to be sorted??? TODO
 def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres,maxfev=0, draw=False):
 
-  fitfunc = lambda p, x: p[0]*exp(-0.5*((x-p[1])/p[2])**2)
+  fitfunc = lambda p, x: p[0]*np.exp(-0.5*((x-p[1])/p[2])**2)
   errfunc  = lambda p, x, y: (y - fitfunc(p, x))
 
   init  = [ 1.0, peak, 1.0]
@@ -353,82 +355,9 @@ def main(argv=sys.argv):
     im=argv[1]
     center=(argv[2],argv[3])
     
-    p = findPeaks( im, center, verbose=True )
+    p = findDistance( im, center, verbose=True )
     print p[:4]
     
-import matplotlib.pyplot as plt
-
-def show_array( a ):
-  plt.imshow( a )
-  plt.colorbar(orientation='horizontal')
-  plt.show()
-    
-def show_vector( v ):
-  x = arange(v.shape[0])
-  plt.plot( x, v )
-  plt.show()
-
-import unittest
-
-
-
-def smooth_np(x,window_len=11,window='hanning'):
-    """smooth the data using a window with requested size.
-    
-    This method is based on the convolution of a scaled window with the signal.
-    The signal is prepared by introducing reflected copies of the signal 
-    (with the window size) in both ends so that transient parts are minimized
-    in the begining and end part of the output signal.
-    
-    input:
-        x: the input signal 
-        window_len: the dimension of the smoothing window; should be an odd integer
-        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
-            flat window will produce a moving average smoothing.
-
-    output:
-        the smoothed signal
-        
-    example:
-
-    t=linspace(-2,2,0.1)
-    x=sin(t)+randn(len(t))*0.1
-    y=smooth(x)
-    
-    see also: 
-    
-    numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
-    scipy.signal.lfilter
- 
-    TODO: the window parameter could be the window itself if an array instead of a string
-    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
-    """
-
-    if x.ndim != 1:
-        raise ValueError, "smooth only accepts 1 dimension arrays."
-
-    if x.size < window_len:
-        raise ValueError, "Input vector needs to be bigger than window size."
-
-
-    if window_len<3:
-        return x
-
-
-    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        raise ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'"
-
-
-    s=np.r_[x[window_len-1:0:-1],x,x[-1:-window_len:-1]]
-    #print(len(s))
-    if window == 'flat': #moving average
-        w=np.ones(window_len,'d')
-    else:
-        w=eval('np.'+window+'(window_len)')
-
-    y=np.convolve(w/w.sum(),s,mode='valid')
-    return y
-
 
 def test():
 
@@ -441,7 +370,7 @@ def test():
         ]
 
     for f,r in files:
-      p=findPeaks("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
+      p=findDistance("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
       # print p[:4]
       if p[:4] != r:
         print
@@ -460,8 +389,23 @@ def test1():
         ]
 
     for f,r in files:
-      p=findPeaks("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
+      p=findDistance("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
       # print p[:4]
+
+
+import matplotlib.pyplot as plt
+
+def show_array( a ):
+  plt.imshow( a )
+  plt.colorbar(orientation='horizontal')
+  plt.show()
+    
+def show_vector( v ):
+  x = arange(v.shape[0])
+  plt.plot( x, v )
+  plt.show()
+
+
 
 if __name__ == '__main__':
     # main()
