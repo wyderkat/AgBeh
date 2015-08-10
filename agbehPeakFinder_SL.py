@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 import cv2
-from ROOT import TH1D, TSpectrum
-from npRootUtils import *
 import numpy as np
 import sys
 from pilatus_np import JJTiff
-from pdb import set_trace as t
 from scipy.optimize import leastsq
-
 import markov
 
 class a_histogram(object):
@@ -140,7 +136,6 @@ def findPeaks(
   allpeaks1st = []
   for row in polarImage:
     markov.smooth( row, smoothingWindow )
-    # allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
     allpeaks1st.extend( peakMarkovPorted( row, 1.0, peakThresh ) )
   # print allpeaks1st
   # show_array( polarImage )
@@ -157,9 +152,6 @@ def findPeaks(
   markov.smooth( hist1st, smoothingWindow )
   # show_vector( hist1st )
 
-  #peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
-  # peaks1st = peakMarkovVerbose( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
-  # print "\n%s\n" % peaks1st
   peaks1st = peakMarkovPorted( hist1st, 0.33, 0.025, hist1stEdges )
   # print "\n%s\n" % peaks1st
   peaks1st.sort()
@@ -167,9 +159,6 @@ def findPeaks(
   
   peaks1st = [ fitGaus( hist1stEdges, hist1st, p, 30, 0, radiusSize, radiusSize*10, draw=False )[0] \
                for p in peaks1st ]
-  # peaks1st = peakGaus( hist1st, peaks1st, 30, radiusSize*10,0,radiusSize )
-  # for o,n in zip(peaks1st, peaks1stTEST):
-    # print o[0], "--new->", n
   peaks1st = np.unique(peaks1st)[0:maxNPeaks]
   # print peaks1st
 
@@ -182,8 +171,6 @@ def findPeaks(
     xdata = np.arange( len(row)+1, dtype=np.float )
     peaks = [ fitGaus( xdata, row, p, 30, 0, radiusSize, radiusSize )[0] \
               for p in peaks1st ]
-    # peaks = peakGaus( row, peaks1st, 30, radiusSize,0,radiusSize )
-    # peaks = [ x[0] for x in peaks if x[0]>=firstPeak and x[0]<=lastPeak ]
     peaks = [ x for x in peaks if x>=firstPeak and x<=lastPeak ]
     peaks.sort()
     allpeaks2nd.extend( peaks )
@@ -211,7 +198,6 @@ def findPeaks(
   # show_vector( hist1st )
   markov.smooth( hist2nd, smoothingWindow )
   # show_vector( hist1st )
-  # peaks2nd = peakMarkov( hist2nd, 0.33, 0.025, radiusSize*10,0,radiusSize )
   peaks2nd = peakMarkovPorted( hist2nd, 0.33, 0.025, hist2ndEdges )
   peaks2nd.sort()
   # print peaks2nd
@@ -230,8 +216,6 @@ def findPeaks(
 
   maxbinIndex = targethist.argmax()
   maxbinCenter = (targethistEdges[maxbinIndex] + targethistEdges[maxbinIndex+1])/2.0
-  # dMeanON, dSigON, dMeanErON, dSigErON = \
-      # peak1Gaus( targethist, maxbinCenter, width, nbins,0,radiusSize )
   peak, sigma = fitGaus( targethistEdges, targethist, maxbinCenter, 30, 0, radiusSize, radiusSize, draw=False )
   # print dMeanON, dSigON, dMeanErON, dSigErON 
   # print dMeanON, maxbinCenter
@@ -314,33 +298,6 @@ def peakMarkovPorted( row, sigma, threshold, histedges = None ):
 
   return result
 
-  #    for (i = 0; i < npeaks; i++) {
-  #       bin = first + Int_t(fPositionX[i] + 0.5);
-  #       fPositionX[i] = hin->GetBinCenter(bin);
-  #       fPositionY[i] = hin->GetBinContent(bin);
-  #    }
-
-
-def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
-  S=TSpectrum()
-  hist = TH1D('','',hbins, hmin, hmax)
-  setBinsToAr1D(hist,row)
-  # how many peaks
-  npeaks = S.Search(hist,sigma,'goff', threshold)
-  # peaks positions in ROOT format...
-  posROOT = S.GetPositionX()
-  pos = rwBuf2Array( posROOT, npeaks)
-  return pos
-def peakMarkovVerbose( row, sigma, threshold, hbins, hmin, hmax):
-  S=TSpectrum()
-  hist = TH1D('','',hbins, hmin, hmax)
-  setBinsToAr1D(hist,row)
-  # how many peaks
-  npeaks = S.Search(hist,sigma,'goff', threshold, True)
-  # peaks positions in ROOT format...
-  posROOT = S.GetPositionX()
-  pos = rwBuf2Array( posROOT, npeaks)
-  return pos
 
 # has to be sorted??? TODO
 def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres,maxfev=0, draw=False):
@@ -391,49 +348,6 @@ def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres,maxfev=0, draw
   return (xdelta,sigma)
 
 
-
-def peak1Gaus( row,peak,width,hbins, hmin, hmax, write=True):
-  # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
-
-  if write==True:
-    hist = TH1D('','',hbins, hmin, hmax)
-    setBinsToAr1D(hist,row)
-  else:
-    hist = row
-  # hist.Draw(); raw_input("continue?\n")
-
-  gf= hist.Fit('gaus','QSNO','goff',peak-width,peak+width)
-
-  return (gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2))
-
-
-def peakGaus( row,peaks,width,hbins, hmin, hmax, write=True):
-  # returns a list of tuples (mean,sigma,errMean,errSig), one entry for each peak in peaks
-
-  peaks.sort()
-  fits=[]
-
-  if write==True:
-    hist = TH1D('','',hbins, hmin, hmax)
-    setBinsToAr1D(hist,row)
-  else:
-    hist = row
-  # hist.Draw(); raw_input("continue?\n")
-
-  nBins= hist.GetNbinsX() #thists have nBins+2 bins - 0 is underflow and nBins+1 is overflow.
-  minBin= hist.GetBinCenter(1)
-  maxBin= hist.GetBinCenter(nBins)
-
-  for idx in range(len(peaks)):
-    if peaks[idx]<minBin and peaks[idx] > maxBin:
-        print 'fitGausPeaks: ERROR ***************** peak outside of histogram range.'
-        print 'Histo name: ', hist.GetName(),'\nHisto Title: ', hist.GetTitle()
-        continue
-    gf= hist.Fit('gaus','QSNO','goff',peaks[idx]-width/2.,peaks[idx]+width/2.)
-
-    fits.append((gf.Value(1),gf.Value(2),gf.Error(1),gf.Error(2)))
-    # print "Vn %s n=%s m=%s x=%s" % (gf.Value(1), nBins, minBin, maxBin) 
-  return fits
 
 def main(argv=sys.argv):
     im=argv[1]
