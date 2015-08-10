@@ -28,6 +28,12 @@ class a_histogram(object):
     # len(me.edges) == len(me.bins) + 1
     # len(me.centers) == len(me.bins)
 
+  def bin_to_idx( me, value ):
+    value -= me.lower
+    value *=  me.resolution/(me.upper-me.lower)
+    value = int(value)
+    return value
+
   def maxbin_center( me ):
     idx = me.bins.argmax()
     return me.centers[ idx ]
@@ -125,7 +131,7 @@ def findDistance(
   polarImage, radiusSize = imageToPolar( image, center, polarSize ) 
 
   if lastPeak is None:
-      lastPeak=radiusSize
+    lastPeak = radiusSize
   # print lastPeak # 453
 
 # 1st STAGE
@@ -158,8 +164,7 @@ def findDistance(
   peaks1st.sort()
   # print "peaks1st", peaks1st
   
-  peaks1st = [ fitGaus( hist1st.edges, hist1st.bins, p, 30, 0, radiusSize, radiusSize*10, draw=False )[0] \
-               for p in peaks1st ]
+  peaks1st = [ fitGaus( hist1st, p, 30 )[0] for p in peaks1st ]
   peaks1st = np.unique(peaks1st)[0:maxNPeaks]
   # print peaks1st
 
@@ -170,8 +175,8 @@ def findDistance(
   diffs2nd = []
   for row in polarImage:
     xdata = np.arange( len(row)+1, dtype=np.float )
-    peaks = [ fitGaus( xdata, row, p, 30, 0, radiusSize, radiusSize )[0] \
-              for p in peaks1st ]
+    peaks = [ fitGaus( row, p, 30 )[0]  for p in peaks1st ]
+
     peaks = [ x for x in peaks if x>=firstPeak and x<=lastPeak ]
     peaks.sort()
     allpeaks2nd.extend( peaks )
@@ -189,9 +194,6 @@ def findDistance(
   # show_vector( diffhist2nd.bins )
 
 
-  # TODO Is this logic fine ?
-  # TODO should be taken normal aPeaks
-
   markov.smooth( hist2nd.bins, smoothingWindow )
   peaks2nd = peakMarkov( hist2nd.bins, 0.33, 0.025, hist2nd.edges )
   peaks2nd.sort()
@@ -199,22 +201,16 @@ def findDistance(
   if len(peaks2nd) > 1:
     targethist = diffhist2nd
     width=10
-    nbins=radiusSize
   else:
     markov.smooth( hist2nd.bins, smoothingWindow )
     markov.smooth( hist2nd.bins, smoothingWindow )
     targethist = hist2nd
     width=5
-    nbins=radiusSize*10 # TODO rm when no ROOT
 
-  c = targethist.maxbin_center()
-  peak, sigma = fitGaus( targethist.edges, targethist.bins, c, 30, 0, radiusSize, radiusSize, draw=False )
-  # print dMeanON, dSigON, dMeanErON, dSigErON 
-  # print dMeanON, maxbinCenter
-
+  p = targethist.maxbin_center()
+  peak, sigma = fitGaus( targethist, p, 30 )
 
   return (peak, sigma)
-  # return (dMeanON, dSigON, dMeanErON, dSigErON,polarImage, image)
         
 
 
@@ -258,6 +254,7 @@ def imageToPolar( image, center, polarSize ):
   at3[ at3<0.0 ] += 2*np.pi
   at3 *= polarSize/(2*np.pi)
   r = r.astype(int)
+  at3 = np.rint( at3 )
   at3 = at3.astype(int)
   radiusSize = np.amax(r)+1
   polarImage= np.zeros((np.amax(at3)+1,radiusSize))
@@ -290,54 +287,59 @@ def peakMarkov( row, sigma, threshold, histedges = None ):
 
   return result
 
-
-# has to be sorted??? TODO
-def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres,maxfev=0, draw=False):
+def fitGaus( container, peak, width, maxfev=0, draw=False):
 
   fitfunc = lambda p, x: p[0]*np.exp(-0.5*((x-p[1])/p[2])**2)
   errfunc  = lambda p, x, y: (y - fitfunc(p, x))
 
   init  = [ 1.0, peak, 1.0]
 
+  if isinstance( container, a_histogram ):
+    lower = container.lower
+    upper = container.upper
+  else:
+    lower = 0
+    upper = len(container)
+
   left = peak - float(width)/2
-  if left < histmin:
-    print "!!! Below boundaries"
-    return init
-  left -= histmin
-  left *=  histres/(histmax-histmin)
-  left = int(left)
   right = peak + float(width)/2
-  if right > histmax:
-    print "!!! Above boundaries"
+
+  if left < lower:
+    print "!!! Below lower boundry: %s < %s" % (left, lower)
     return init
-  right -= histmin
-  right *=  histres/(histmax-histmin)
-  right = int(right)
+  if right > upper:
+    print "!!! Above upper boundry: %s > %s" % (right, upper)
+    return init
 
-  # TODO better and in the class
-  # centers of bins
-  xdata1 = np.array( [ ((xdata[i]+xdata[i+1])/2.0) for i in xrange(left,right+1) ] )
-  # xdata1 = xdata1 - peak
+  if isinstance( container, a_histogram ):
+    left = container.bin_to_idx( left )
+    right = container.bin_to_idx( right )
+    
+    xdata1 = container.centers[ left : right ]
+    ydata1 = container.bins   [ left : right ]
+  else:
+    left = int(left)
+    right = int(right)
 
-  # show_vector( xdata1 )
-  ydata1 = ydata[left:right+1]
-  # show_vector( ydata1 )
+    xdata1 = np.arange( left, right )
+    ydata1 = container[ left : right ]
 
 
   out   = scipy.optimize.leastsq( errfunc, init, args=(xdata1, ydata1), maxfev=maxfev)
-  c = out[0]
-  # print c
-  xdelta = c[1]
-  sigma  = c[2]
+  C = out[0]
+  # print C
+  xdelta = C[1]
+  sigma  = C[2]
 
   if draw:
     import pylab
     pylab.plot(xdata1, ydata1)
-    pylab.plot(xdata1, fitfunc(c, xdata1))
-    pylab.title(r'$A = %.6f\  \mu = %.6f\  \sigma = %.6f$' %(c[0],c[1],c[2]));
+    pylab.plot(xdata1, fitfunc(C, xdata1))
+    pylab.title(r'$A = %.6f\  \mu = %.6f\  \sigma = %.6f$' %(C[0],C[1],C[2]));
     pylab.show()
 
   return (xdelta,sigma)
+
 
 
 
