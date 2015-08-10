@@ -159,7 +159,9 @@ def findDistance(
   markov.smooth( hist1st.bins, smoothingWindow )
   # show_vector( hist1st.bins )
 
-  peaks1st = peakMarkov( hist1st.bins, 0.33, 0.025, hist1st.edges )
+  peaks1st = peakMarkov( hist1st, 0.33, 0.025 )
+  if not peaks1st: 
+    return (0,0)
   # print "\n%s\n" % peaks1st
   peaks1st.sort()
   # print "peaks1st", peaks1st
@@ -195,7 +197,9 @@ def findDistance(
 
 
   markov.smooth( hist2nd.bins, smoothingWindow )
-  peaks2nd = peakMarkov( hist2nd.bins, 0.33, 0.025, hist2nd.edges )
+  peaks2nd = peakMarkov( hist2nd, 0.33, 0.025 )
+  if not peaks2nd: 
+    return (0,0)
   peaks2nd.sort()
   # print peaks2nd
   if len(peaks2nd) > 1:
@@ -266,24 +270,27 @@ def imageToPolar( image, center, polarSize ):
 
   return (polarImage, radiusSize )
 
-def peakMarkov( row, sigma, threshold, histedges = None ):
-  peaks = markov.search( row, sigma, threshold )
-  result = []
 
-  # TODO
-  if histedges is not None:
-    first = histedges[0]
-    i = 0
-    for p in peaks:
-      j = first + int(p + 0.5);
-      center = (histedges[j] + histedges[j+1])/2.0
-      result.append( center )
-      i+=1
+def peakMarkov( container, sigma, threshold ):
+  if isinstance( container, a_histogram ):
+    data = container.bins
   else:
-    # TODO Michael
-    for p in peaks:
+    data = container
+
+  peaks = markov.search( data, sigma, threshold )
+
+  result = []
+  for p in peaks:
+    if isinstance( container, a_histogram ):
+      # Michael, do you think this is OK? From TSpectrum.cxx
+      first = container.edges[0]
+      # Michael, do you think this is OK? From TSpectrum.cxx
+      j = first + int(p + 0.5);
+      center = container.centers[j]
+    else:
+      # Michael, do you think this is OK? From TSpectrum.cxx
       center = int(p + 0.5) + 0.5
-      result.append( center )
+    result.append( center )
 
   return result
 
@@ -315,17 +322,19 @@ def fitGaus( container, peak, width, maxfev=0, draw=False):
     left = container.bin_to_idx( left )
     right = container.bin_to_idx( right )
     
-    xdata1 = container.centers[ left : right ]
-    ydata1 = container.bins   [ left : right ]
+    # Michael, in TSpectrum.cxx is actually right+1. Any thoughts?
+    xdata = container.centers[ left : right ]
+    ydata = container.bins   [ left : right ]
   else:
     left = int(left)
     right = int(right)
 
-    xdata1 = np.arange( left, right )
-    ydata1 = container[ left : right ]
+    # Michael, in TSpectrum.cxx is actually right+1. Any thoughts?
+    xdata = np.arange( left, right )
+    ydata = container[ left : right ]
 
 
-  out   = scipy.optimize.leastsq( errfunc, init, args=(xdata1, ydata1), maxfev=maxfev)
+  out   = scipy.optimize.leastsq( errfunc, init, args=(xdata, ydata), maxfev=maxfev)
   C = out[0]
   # print C
   xdelta = C[1]
@@ -333,8 +342,8 @@ def fitGaus( container, peak, width, maxfev=0, draw=False):
 
   if draw:
     import pylab
-    pylab.plot(xdata1, ydata1)
-    pylab.plot(xdata1, fitfunc(C, xdata1))
+    pylab.plot(xdata, ydata)
+    pylab.plot(xdata, fitfunc(C, xdata))
     pylab.title(r'$A = %.6f\  \mu = %.6f\  \sigma = %.6f$' %(C[0],C[1],C[2]));
     pylab.show()
 
