@@ -132,43 +132,30 @@ def findDistance(
 
   if lastPeak is None:
     lastPeak = radiusSize
-  # print lastPeak # 453
 
 # 1st STAGE
 
   # run a gaus filter over the polar image to blend in the rough spots
   polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
-  # show_array( polarImage )
-
 
   allpeaks1st = []
   for row in polarImage:
     markov.smooth( row, smoothingWindow )
-    allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh ) )
-  # print allpeaks1st
-  # show_array( polarImage )
+    allpeaks1st.extend( searchPeaks( row, 1.0, peakThresh ) )
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
-  # print allpeaks1st
   hist1st = a_histogram( allpeaks1st, 0, radiusSize, radiusSize*10 )
-  # show_vector( hist1st.bins )
-
 
   # be careful, dtype has to be dynamic (float, but no float32 or no float64)
   markov.smooth( hist1st.bins, smoothingWindow )
-  # show_vector( hist1st.bins )
   markov.smooth( hist1st.bins, smoothingWindow )
-  # show_vector( hist1st.bins )
 
-  peaks1st = peakMarkov( hist1st, 0.33, 0.025 )
+  peaks1st = searchPeaks( hist1st, 0.33, 0.025 )
   if not peaks1st: 
     return (0,0)
-  # print "\n%s\n" % peaks1st
   peaks1st.sort()
-  # print "peaks1st", peaks1st
   
   peaks1st = [ fitGaus( hist1st, p, 30 )[0] for p in peaks1st ]
   peaks1st = np.unique(peaks1st)[0:maxNPeaks]
-  # print peaks1st
 
 
 # 2nd STAGE
@@ -185,23 +172,19 @@ def findDistance(
     diffs2nd.extend( np.diff( peaks ) ) # still not a numpy array
 
   allpeaks2nd = np.array( allpeaks2nd )
-  # print allpeaks2nd
   diffs2nd = np.array( diffs2nd )
 
   hist2nd = a_histogram( allpeaks2nd, 0, radiusSize, radiusSize*10 )
-  # show_vector( hist2nd.bins )
 
   diffs2nd = diffs2nd[ diffs2nd>=minDiff ]
   diffhist2nd = a_histogram( diffs2nd, 0, radiusSize, radiusSize )
-  # show_vector( diffhist2nd.bins )
 
 
   markov.smooth( hist2nd.bins, smoothingWindow )
-  peaks2nd = peakMarkov( hist2nd, 0.33, 0.025 )
+  peaks2nd = searchPeaks( hist2nd, 0.33, 0.025 )
   if not peaks2nd: 
     return (0,0)
   peaks2nd.sort()
-  # print peaks2nd
   if len(peaks2nd) > 1:
     targethist = diffhist2nd
     width=10
@@ -271,7 +254,7 @@ def imageToPolar( image, center, polarSize ):
   return (polarImage, radiusSize )
 
 
-def peakMarkov( container, sigma, threshold ):
+def searchPeaks( container, sigma, threshold ):
   if isinstance( container, a_histogram ):
     data = container.bins
   else:
