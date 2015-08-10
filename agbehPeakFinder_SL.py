@@ -140,8 +140,8 @@ def findPeaks(
   allpeaks1st = []
   for row in polarImage:
     markov.smooth( row, smoothingWindow )
-    allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
-    # allpeaks1st.extend( markov.search( row, 1.0, peakThresh ) )
+    # allpeaks1st.extend( peakMarkov( row, 1.0, peakThresh, radiusSize,0,radiusSize) )
+    allpeaks1st.extend( peakMarkovPorted( row, 1.0, peakThresh ) )
   # print allpeaks1st
   # show_array( polarImage )
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
@@ -158,10 +158,10 @@ def findPeaks(
   # show_vector( hist1st )
 
   #peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
-  peaks1st = peakMarkovVerbose( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
-  print "\n%s\n" % peaks1st
+  # peaks1st = peakMarkovVerbose( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  # print "\n%s\n" % peaks1st
   peaks1st = peakMarkovPorted( hist1st, 0.33, 0.025, hist1stEdges )
-  print "\n%s\n" % peaks1st
+  # print "\n%s\n" % peaks1st
   peaks1st.sort()
   # print "peaks1st", peaks1st
   
@@ -211,7 +211,8 @@ def findPeaks(
   # show_vector( hist1st )
   markov.smooth( hist2nd, smoothingWindow )
   # show_vector( hist1st )
-  peaks2nd = peakMarkov( hist2nd, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  # peaks2nd = peakMarkov( hist2nd, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  peaks2nd = peakMarkovPorted( hist2nd, 0.33, 0.025, hist2ndEdges )
   peaks2nd.sort()
   # print peaks2nd
   if len(peaks2nd) > 1:
@@ -293,11 +294,10 @@ def imageToPolar( image, center, polarSize ):
   return (polarImage, radiusSize )
 
 def peakMarkovPorted( row, sigma, threshold, histedges = None ):
-  # print "markov.search( ssize = %s" % len(row)
   peaks = markov.search( row, sigma, threshold )
-  #peaks[i] =  (int)(peaks[i] + 0.5) + 0.5;
   result = []
 
+  # TODO
   if histedges is not None:
     first = histedges[0]
     i = 0
@@ -306,6 +306,11 @@ def peakMarkovPorted( row, sigma, threshold, histedges = None ):
       center = (histedges[j] + histedges[j+1])/2.0
       result.append( center )
       i+=1
+  else:
+    # TODO Michael
+    for p in peaks:
+      center = int(p + 0.5) + 0.5
+      result.append( center )
 
   return result
 
@@ -546,9 +551,4 @@ def test1():
 
 if __name__ == '__main__':
     # main()
-    # test()
-    test1();
-    #h = a_histogram( [1,1,2,3,6,6], 0,10,11 )
-    #print "bins", h.bins
-    #print "edges", h.edges
-    #print "centers", h.centers
+    test()
