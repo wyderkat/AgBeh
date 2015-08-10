@@ -4,19 +4,16 @@
 import sys
 import cv2
 import numpy as np
-from scipy.optimize import leastsq
+import scipy.optimize
+import markov
 
 from pilatus_np import JJTiff
-import markov
 
 class a_histogram(object):
   def __init__( me, data, lower, upper, resolution ):
     me.lower = lower
     me.upper = upper
     me.resolution = resolution
-    me.bins = [] 
-    me.edges = [] # len(me.edges) == len(me.bins) + 1
-    me.centers = [] # len(me.centers) == len(me.bins)
 
     me.bins, me.edges = \
       np.histogram( data , bins=me.resolution, range=(me.lower,me.upper) )
@@ -27,6 +24,9 @@ class a_histogram(object):
         [me.centers, me.edges[:-1], me.edges[1:]],
         op_flags=['readwrite']):
       center[...] = (left+right)/2.0;
+
+    # len(me.edges) == len(me.bins) + 1
+    # len(me.centers) == len(me.bins)
 
   def maxbin_center( me ):
     idx = me.bins.argmax()
@@ -143,23 +143,22 @@ def findDistance(
   # show_array( polarImage )
   allpeaks1st = np.array( [x for x in allpeaks1st if x>=firstPeak and x<=lastPeak] )
   # print allpeaks1st
-  hist1st,hist1stEdges = np.histogram( allpeaks1st , bins=radiusSize*10, range=(0,radiusSize) )
-  hist1st = hist1st.astype( np.float )
-  # show_vector( hist1st )
+  hist1st = a_histogram( allpeaks1st, 0, radiusSize, radiusSize*10 )
+  # show_vector( hist1st.bins )
 
 
   # be careful, dtype has to be dynamic (float, but no float32 or no float64)
-  markov.smooth( hist1st, smoothingWindow )
-  # show_vector( hist1st )
-  markov.smooth( hist1st, smoothingWindow )
-  # show_vector( hist1st )
+  markov.smooth( hist1st.bins, smoothingWindow )
+  # show_vector( hist1st.bins )
+  markov.smooth( hist1st.bins, smoothingWindow )
+  # show_vector( hist1st.bins )
 
-  peaks1st = peakMarkov( hist1st, 0.33, 0.025, hist1stEdges )
+  peaks1st = peakMarkov( hist1st.bins, 0.33, 0.025, hist1st.edges )
   # print "\n%s\n" % peaks1st
   peaks1st.sort()
   # print "peaks1st", peaks1st
   
-  peaks1st = [ fitGaus( hist1stEdges, hist1st, p, 30, 0, radiusSize, radiusSize*10, draw=False )[0] \
+  peaks1st = [ fitGaus( hist1st.edges, hist1st.bins, p, 30, 0, radiusSize, radiusSize*10, draw=False )[0] \
                for p in peaks1st ]
   peaks1st = np.unique(peaks1st)[0:maxNPeaks]
   # print peaks1st
@@ -182,43 +181,34 @@ def findDistance(
   # print allpeaks2nd
   diffs2nd = np.array( diffs2nd )
 
-  hist2nd, hist2ndEdges = \
-      np.histogram( allpeaks2nd , bins=radiusSize*10, range=(0,radiusSize) )
-  hist2nd = hist2nd.astype( np.float )
-  # show_vector( hist2nd )
+  hist2nd = a_histogram( allpeaks2nd, 0, radiusSize, radiusSize*10 )
+  # show_vector( hist2nd.bins )
 
   diffs2nd = diffs2nd[ diffs2nd>=minDiff ]
-  diffhist2nd, diffhist2ndEdges = \
-      np.histogram( diffs2nd , bins=radiusSize, range=(0,radiusSize) )
-  diffhist2nd = diffhist2nd.astype( np.float )
-  # show_vector( diffhist2nd )
+  diffhist2nd = a_histogram( diffs2nd, 0, radiusSize, radiusSize )
+  # show_vector( diffhist2nd.bins )
 
 
   # TODO Is this logic fine ?
   # TODO should be taken normal aPeaks
 
-  # show_vector( hist1st )
-  markov.smooth( hist2nd, smoothingWindow )
-  # show_vector( hist1st )
-  peaks2nd = peakMarkov( hist2nd, 0.33, 0.025, hist2ndEdges )
+  markov.smooth( hist2nd.bins, smoothingWindow )
+  peaks2nd = peakMarkov( hist2nd.bins, 0.33, 0.025, hist2nd.edges )
   peaks2nd.sort()
   # print peaks2nd
   if len(peaks2nd) > 1:
     targethist = diffhist2nd
-    targethistEdges = diffhist2ndEdges
     width=10
     nbins=radiusSize
   else:
-    markov.smooth( hist2nd, smoothingWindow )
-    markov.smooth( hist2nd, smoothingWindow )
+    markov.smooth( hist2nd.bins, smoothingWindow )
+    markov.smooth( hist2nd.bins, smoothingWindow )
     targethist = hist2nd
-    targethistEdges = hist2ndEdges
     width=5
     nbins=radiusSize*10 # TODO rm when no ROOT
 
-  maxbinIndex = targethist.argmax()
-  maxbinCenter = (targethistEdges[maxbinIndex] + targethistEdges[maxbinIndex+1])/2.0
-  peak, sigma = fitGaus( targethistEdges, targethist, maxbinCenter, 30, 0, radiusSize, radiusSize, draw=False )
+  c = targethist.maxbin_center()
+  peak, sigma = fitGaus( targethist.edges, targethist.bins, c, 30, 0, radiusSize, radiusSize, draw=False )
   # print dMeanON, dSigON, dMeanErON, dSigErON 
   # print dMeanON, maxbinCenter
 
@@ -334,7 +324,7 @@ def fitGaus( xdata, ydata, peak, width, histmin, histmax, histres,maxfev=0, draw
   # show_vector( ydata1 )
 
 
-  out   = leastsq( errfunc, init, args=(xdata1, ydata1), maxfev=maxfev)
+  out   = scipy.optimize.leastsq( errfunc, init, args=(xdata1, ydata1), maxfev=maxfev)
   c = out[0]
   # print c
   xdelta = c[1]
