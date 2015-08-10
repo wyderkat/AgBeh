@@ -117,17 +117,29 @@ static int search_ROOT(
   int averWindow, 
   double* resultPeaks)
 {
-    printf("TomMarkov: ssize=%d, sigma=%f, th=%f, bg=%d, iter=%d, markov=%d, win=%d\n",
-      ssize, sigma, threshold, backgroundRemove, deconIterations, markov, averWindow);
-    //printf("TomMarkov: [608]=%f, [609]=%f, [610]=%f, [611]=%f \n",
-    //    source[608], source[609], source[610], source[611]); 
-  
    int verbose = 1;
    int iii; double sumsum=0;
-   for(iii=0; iii<ssize; iii++) {
-     sumsum += source[iii];
+   if (verbose) {
+    printf("ssize=%d, sigma=%f, th=%f, bg=%d, iter=%d, markov=%d, win=%d\n",
+      ssize, sigma, threshold, backgroundRemove, deconIterations, markov, averWindow);
+    //printf("TomROOT: [608]=%f, [609]=%f, [610]=%f, [611]=%f \n",
+        //source[608], source[609], source[610], source[611]); 
+    printf("fMaxPeaks=%d \n", MAX_PEAKS);
+    for(iii=0,sumsum=0; iii<ssize; iii++) {
+      sumsum += source[iii];
+    }
+    printf("sum of source=%f \n", sumsum);
+
+    for(iii=3500,sumsum=0; iii<ssize; iii++) {
+      sumsum += source[iii];
+    }
+    printf("sum of source [3500:]=%f \n", sumsum);
+
+    for(iii=1500,sumsum=0; iii<2000; iii++) {
+      sumsum += source[iii];
+    }
+    printf("sum of source [1500:2000]=%f \n", sumsum);
    }
-   printf("TomMarkov: sumsum=%f \n", sumsum);
 
   // ROOT's code. Don't touch that ... puzzle!
    int i, j, numberIterations = (int)(7 * sigma + 0.5);
@@ -188,6 +200,7 @@ static int search_ROOT(
    i = (int)(7 * sigma + 0.5);
    i = 2 * i;
    double * working_space = calloc( 7*(ssize+i), sizeof(double) );
+   if (verbose) printf("sizeof working_space=%d\n", 7*(ssize+i));
    //double *working_space = new double [7 * (ssize + i)];
    for (j=0;j<7 * (ssize + i);j++) working_space[j] = 0;
 
@@ -208,6 +221,13 @@ static int search_ROOT(
 
       else
          working_space[i + size_ext] = source[i - shift];
+   }
+
+   if (verbose) {
+     for(iii=0,sumsum=0; iii<32494; iii++) {
+       sumsum += working_space[iii];
+     }
+     printf("sum of working_space 1l = %f \n", sumsum);
    }
 
    if(backgroundRemove == true){
@@ -286,6 +306,13 @@ static int search_ROOT(
 
    for(i = 0; i < size_ext; i++){
       working_space[i + 6*size_ext] = working_space[i + size_ext];
+   }
+
+   if (verbose) {
+     for(iii=0,sumsum=0; iii<32494; iii++) {
+       sumsum += working_space[iii];
+     }
+     printf("sum of working_space bac = %f \n", sumsum);
    }
 
    if(markov == true){
@@ -372,6 +399,13 @@ static int search_ROOT(
          }
       }
    }
+
+   if (verbose) {
+     for(iii=0,sumsum=0; iii<32494; iii++) {
+       sumsum += working_space[iii];
+     }
+     printf("sum of working_space Mar = %f \n", sumsum);
+   }
 //deconvolution starts
    area = 0;
    lh_gold = -1;
@@ -393,9 +427,25 @@ static int search_ROOT(
          posit = i;
       }
    }
+
+   if (verbose) {
+     for(iii=0,sumsum=0; iii<32494; iii++) {
+       sumsum += working_space[iii];
+     }
+     printf("sum of working_space SV = %f \n", sumsum);
+   }
+
 //read source vector
    for(i = 0; i < size_ext; i++)
-      working_space[2 * size_ext + i] = abs(working_space[size_ext + i]);
+      working_space[2 * size_ext + i] = fabs(working_space[size_ext + i]);
+
+   if (verbose) {
+     for(iii=0,sumsum=0; iii<32494; iii++) {
+       sumsum += working_space[iii];
+     }
+     printf("sum of working_space CM = %f, size_ext=%d \n", sumsum, size_ext);
+   }
+
 //create matrix at*a(vector b)
    i = lh_gold - 1;
    if(i > size_ext)
@@ -418,6 +468,14 @@ static int search_ROOT(
       }
       working_space[size_ext + i - imin] = lda;
    }
+
+   if (verbose) {
+     for(iii=0,sumsum=0; iii<32494; iii++) {
+       sumsum += working_space[iii];
+     }
+     printf("sum of working_space CP = %f \n", sumsum);
+   }
+
 //create vector p
    i = lh_gold - 1;
    imin = -i,imax = size_ext + i - 1;
@@ -434,6 +492,14 @@ static int search_ROOT(
       }
       working_space[4 * size_ext + i - imin] = lda;
    }
+
+   if (verbose) {
+     for(iii=0,sumsum=0; iii<32494; iii++) {
+       sumsum += working_space[iii];
+     }
+     printf("sum of working_space VP = %f \n", sumsum);
+   }
+
 //move vector p
    for(i = imin; i <= imax; i++)
       working_space[2 * size_ext + i - imin] = working_space[4 * size_ext + i - imin];
@@ -443,7 +509,7 @@ static int search_ROOT(
 //START OF ITERATIONS
    for(lindex = 0; lindex < deconIterations; lindex++){
       for(i = 0; i < size_ext; i++){
-         if(abs(working_space[2 * size_ext + i]) > 0.00001 && abs(working_space[i]) > 0.00001){
+         if(fabs(working_space[2 * size_ext + i]) > 0.00001 && fabs(working_space[i]) > 0.00001){
             lda=0;
             jmin = lh_gold - 1;
             if(jmin > i)
@@ -551,7 +617,9 @@ static int search_ROOT(
    }
 
    free(working_space);
-   printf("TomMarkov: fNPeaks=%d 3rd=%f \n", peak_index, resultPeaks[2] );
+   if (verbose) {
+     printf("peaks=%d 3rd=%f \n", peak_index, resultPeaks[2] );
+   }
    return peak_index;
 }
 

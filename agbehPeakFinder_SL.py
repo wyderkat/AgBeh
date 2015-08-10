@@ -158,9 +158,10 @@ def findPeaks(
   # show_vector( hist1st )
 
   #peaks1st = peakMarkov( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
-  # peaks1st = peakMarkovVerbose( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  peaks1st = peakMarkovVerbose( hist1st, 0.33, 0.025, radiusSize*10,0,radiusSize )
+  print "\n%s\n" % peaks1st
   peaks1st = peakMarkovPorted( hist1st, 0.33, 0.025, hist1stEdges )
-  print "peaks1st", peaks1st
+  print "\n%s\n" % peaks1st
   peaks1st.sort()
   # print "peaks1st", peaks1st
   
@@ -314,32 +315,6 @@ def peakMarkovPorted( row, sigma, threshold, histedges = None ):
   #       fPositionY[i] = hin->GetBinContent(bin);
   #    }
 
-def peakMarkovInternal( row, sigma, threshold, histedges ):
-  S=TSpectrum()
-  # hist = TH1D('','',hbins, hmin, hmax)
-  # setBinsToAr1D(hist,row)
-  size = len(row)
-  # how many peaks
-  if (sigma < 1):
-     sigma = size/100
-     if sigma < 1: sigma = 1
-     if sigma > 8: sigma = 8
-
-  dest = np.zeros(100,dtype=np.float)
-  # npeaks = S.Search(hist,sigma,'goff', threshold)
-  npeaks = S.SearchHighRes(row, dest, size, sigma, 100*threshold,
-                             True, 3, True, 3)
-  result = []
-
-  first = histedges[0]
-  i = 0
-  for p in S.fPositionX:
-    j = first + int(p + 0.5);
-    center = (histedges[j] + histedges[j+1])/2.0
-    result.append( center )
-    i+=1
-
-  return result
 
 def peakMarkov( row, sigma, threshold, hbins, hmin, hmax):
   S=TSpectrum()
@@ -559,9 +534,20 @@ def test():
       else:
         print "Exact results."
 
+def test1():
+
+    files = [ 
+      (143, (61.508508907329706, 0.9031407554284832, 0.06134643997660053, 0.03940823942452154) ),
+        ]
+
+    for f,r in files:
+      p=findPeaks("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
+      # print p[:4]
+
 if __name__ == '__main__':
     # main()
-    test()
+    # test()
+    test1();
     #h = a_histogram( [1,1,2,3,6,6], 0,10,11 )
     #print "bins", h.bins
     #print "edges", h.edges
