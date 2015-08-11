@@ -187,6 +187,8 @@ def findDistance(
     return (0,0)
   peaks2nd.sort()
   if len(peaks2nd) > 1:
+    if len( diffs2nd ) == 0:
+      return (0,0)
     targethist = diffhist2nd
     width=10
   else:
@@ -196,6 +198,7 @@ def findDistance(
     width=5
 
   p = targethist.maxbin_center()
+
   peak, sigma = fitGaus( targethist, p, 30 )
 
   return (peak, sigma)
@@ -204,30 +207,20 @@ def findDistance(
 
 
 
-def retrieveImage(filePath,clearVoids=False,makeU8=False,doLog=False):
-    # return a np array (2dim) of a saxslab tiff file
+def retrieveImage(filePath,makeU8=False,doLog=False):
+        
+  jjIm=JJTiff(filePath,bars = 0.0, nega = 0.0)
+  image=np.rot90(np.fliplr(jjIm.arr))
+        
+  if doLog:
+    image[image<1]=1
+    image=np.log(image)
+  if makeU8:
+    image[image<0]=0 # this is needed for uint8
+    imMax=np.amax(image)
+    image=array(image/float(imMax)*255,dtype='uint8')
 
-    try:
-        
-        jjIm=JJTiff(filePath,bars = 0.0, nega = 0.0)
-        image=np.rot90(np.fliplr(jjIm.arr)) # these aren't indexed the way I had them before. Easier to fix than to rewrite all my code.
-        
-    except TypeError: # TIFF.open returns a TypeError when it can't read a file. NOTE: This may be cruft now that I use JJTiff
-        print 'Could not open',filePath
-        return
-    # -1, -2, are 255, 254 once we make them uint8, so let's just make the < 0 pix be 0.
-    if clearVoids:
-        image[image<0]=0
-    if doLog:
-        image[image<1]=1
-        image=np.log(image)
-    if makeU8:
-        image[image<0]=0 # this is needed for uint8
-        imMax=np.amax(image)
-        im8=array(image/float(imMax)*255,dtype='uint8')
-        return im8
-    else:
-        return image
+  return image
 
 def imageToPolar( image, center, polarSize ):
 
@@ -372,14 +365,15 @@ def test():
 def test1():
 
     files = [ 
-      (143, (61.508508907329706, 0.9031407554284832, 0.06134643997660053, 0.03940823942452154) ),
+      (158, (174.63267829976627, 0.20404616811924745, 0.024227341549215325, 0.023505703755918456) ),
         ]
 
     for f,r in files:
-      p=findDistance("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
+      p=findDistance("SFU/raw/latest_%07d_caz.tiff"%f, (347,200),verbose=False)
       # print p[:4]
 
 
 if __name__ == '__main__':
     # main()
     test()
+    test1()
