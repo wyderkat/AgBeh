@@ -5,6 +5,7 @@ import sys
 import cv2
 import numpy as np
 import scipy.optimize
+import warnings
 import markov
 
 from pilatus_np import JJTiff
@@ -317,7 +318,10 @@ def fitGaus( container, peak, width, maxfev=0, draw=False):
     ydata = container[ left : right ]
 
 
-  out   = scipy.optimize.leastsq( errfunc, init, args=(xdata, ydata), maxfev=maxfev)
+  with warnings.catch_warnings():
+    warnings.simplefilter("ignore", RuntimeWarning)
+    out   = scipy.optimize.leastsq( errfunc, init, args=(xdata, ydata), maxfev=maxfev)
+
   C = out[0]
   # print C
   xdelta = C[1]
