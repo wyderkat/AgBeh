@@ -570,7 +570,6 @@ static PyObject *search(PyObject *self, PyObject *args) {
 
   // From TSpectrum.Search
   if (sigma < 1) {
-    //sigma = (float)ssize/MAX_PEAKS;
     sigma = ssize/MAX_PEAKS;
     if (sigma < 1) sigma = 1;
     if (sigma > 8) sigma = 8;

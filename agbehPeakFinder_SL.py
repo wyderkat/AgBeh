@@ -306,19 +306,18 @@ def fitGaus( container, peak, width, maxfev=0, draw=False):
     left = container.bin_to_idx( left )
     right = container.bin_to_idx( right )
     
-    # Michael, in TSpectrum.cxx is actually right+1. Any thoughts?
     xdata = container.centers[ left : right ]
     ydata = container.bins   [ left : right ]
   else:
     left = int(left)
     right = int(right)
 
-    # Michael, in TSpectrum.cxx is actually right+1. Any thoughts?
     xdata = np.arange( left, right )
     ydata = container[ left : right ]
 
 
   with warnings.catch_warnings():
+    # we have to ignore warning when it cannot do the good match (maxfev>800)
     warnings.simplefilter("ignore", RuntimeWarning)
     out   = scipy.optimize.leastsq( errfunc, init, args=(xdata, ydata), maxfev=maxfev)
 

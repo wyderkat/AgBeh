@@ -1,4 +1,9 @@
+Those packages are needed
+1. python-dev
+2. python-opencv
+3. python-scipy
 ROOT is not needed.
+
 
 Before first run type `make`
 
