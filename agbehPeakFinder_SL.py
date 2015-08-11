@@ -319,7 +319,7 @@ def fitGaus( container, peak, width, maxfev=0, draw=False):
   with warnings.catch_warnings():
     # we have to ignore warning when it cannot do the good match (maxfev>800)
     warnings.simplefilter("ignore", RuntimeWarning)
-    out   = scipy.optimize.leastsq( errfunc, init, args=(xdata, ydata), maxfev=maxfev)
+    out = scipy.optimize.leastsq( errfunc, init, args=(xdata, ydata), maxfev=maxfev)
 
   C = out[0]
   # print C
@@ -378,20 +378,6 @@ def test1():
     for f,r in files:
       p=findDistance("SFU/raw/latest_%07d_caz.tiff"%f, (350,200),verbose=False)
       # print p[:4]
-
-
-import matplotlib.pyplot as plt
-
-def show_array( a ):
-  plt.imshow( a )
-  plt.colorbar(orientation='horizontal')
-  plt.show()
-    
-def show_vector( v ):
-  x = arange(v.shape[0])
-  plt.plot( x, v )
-  plt.show()
-
 
 
 if __name__ == '__main__':
