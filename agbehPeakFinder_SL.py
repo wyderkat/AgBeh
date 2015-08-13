@@ -137,7 +137,7 @@ def findDistance(
 # 1st STAGE
 
   # run a gaus filter over the polar image to blend in the rough spots
-  polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
+  #polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
 
   allpeaks1st = []
   for row in polarImage:
@@ -262,7 +262,7 @@ def searchPeaks( container, sigma, threshold ):
       # Michael, do you think this is OK? From TSpectrum.cxx
       first = container.edges[0]
       # Michael, do you think this is OK? From TSpectrum.cxx
-      j = first + int(p + 0.5);
+      j = int(first + int(p + 0.5))
       center = container.centers[j]
     else:
       # Michael, do you think this is OK? From TSpectrum.cxx
@@ -365,15 +365,15 @@ def test():
 def test1():
 
     files = [ 
-      (158, (174.63267829976627, 0.20404616811924745, 0.024227341549215325, 0.023505703755918456) ),
+      (143, (61.508508907329706, 0.9031407554284832, 0.06134643997660053, 0.03940823942452154) ),
         ]
 
     for f,r in files:
-      p=findDistance("SFU/raw/latest_%07d_caz.tiff"%f, (347,200),verbose=False)
-      # print p[:4]
+      p=findDistance("SFU/raw/latest_%07d_caz.tiff"%f, (350.0,200.0),verbose=False)
+      print p[:4]
 
 
 if __name__ == '__main__':
     # main()
     test()
-    test1()
+    # test1()
