@@ -5,10 +5,12 @@ import sys
 import cv2
 import numpy as np
 import scipy.optimize
+# import scipy.ndimage
 import warnings
 import markov
 
 from pilatus_np import JJTiff
+import logging as ___
 
 class a_histogram(object):
   def __init__( me, data, lower, upper, resolution ):
@@ -124,6 +126,7 @@ def findDistance(
     """
 
 
+  ___.debug("Start")
   if type(imageOrFilename) == str:
     image = retrieveImage( imageOrFilename, doLog=doLogIm)
   else:
@@ -137,7 +140,8 @@ def findDistance(
 # 1st STAGE
 
   # run a gaus filter over the polar image to blend in the rough spots
-  #polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
+  # polarImage = cv2.GaussianBlur(polarImage,(3,3),0)
+  # polarImage = scipy.ndimage.gaussian_filter(polarImage, sigma=0.8)
 
   allpeaks1st = []
   for row in polarImage:
@@ -201,6 +205,7 @@ def findDistance(
 
   peak, sigma = fitGaus( targethist, p, 30 )
 
+  ___.debug("Finish")
   return (peak, sigma)
         
 
@@ -238,12 +243,14 @@ def imageToPolar( image, center, polarSize ):
   at3 = np.rint( at3 )
   at3 = at3.astype(int)
   radiusSize = np.amax(r)+1
+  ___.debug("loop start")
   polarImage= np.zeros((np.amax(at3)+1,radiusSize))
   it = np.nditer(image, flags=['multi_index'])
   # polarize
   while not it.finished:
     polarImage[ at3[it.multi_index],r[it.multi_index] ] += it[0]
     it.iternext()
+  ___.debug("loop finish")
 
   return (polarImage, radiusSize )
 
@@ -289,10 +296,10 @@ def fitGaus( container, peak, width, maxfev=0, draw=False):
   right = peak + float(width)/2
 
   if left < lower:
-    print "!!! Below lower boundry: %s < %s" % (left, lower)
+    ___.error( "agbeh_distance: below lower boundry: %s < %s" % (left, lower) )
     return init
   if right > upper:
-    print "!!! Above upper boundry: %s > %s" % (right, upper)
+    ___.error( "agbeh_distance: above upper boundry: %s > %s" % (right, upper) )
     return init
 
   if isinstance( container, a_histogram ):
@@ -374,6 +381,7 @@ def test1():
 
 
 if __name__ == '__main__':
-    # main()
-    test()
-    # test1()
+  ___.basicConfig(level=___.DEBUG, format='%(asctime)s %(levelname)s %(message)s', )
+  # main()
+  test()
+  # test1()
