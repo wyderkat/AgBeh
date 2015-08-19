@@ -245,11 +245,8 @@ def imageToPolar( image, center, polarSize ):
   radiusSize = np.amax(r)+1
   ___.debug("loop start")
   polarImage= np.zeros((np.amax(at3)+1,radiusSize))
-  it = np.nditer(image, flags=['multi_index'])
   # polarize
-  while not it.finished:
-    polarImage[ at3[it.multi_index],r[it.multi_index] ] += it[0]
-    it.iternext()
+  np.add.at(polarImage, (at3,r), image)
   ___.debug("loop finish")
 
   return (polarImage, radiusSize )
